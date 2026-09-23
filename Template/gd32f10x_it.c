@@ -49,7 +49,6 @@ extern UART_HandleTypeDef huart5;
 
 extern FlagStatus receive_flag;
 extern can_receive_message_struct receive_message;
-extern can_receive_message_struct receive1_message;
 
 
 
@@ -213,8 +212,6 @@ void USART1_IRQHandler(void)
     }
 }
 
-// UART1_RX_BUF_SIZE;
-// huart1.pRxBuffPtr=(uint8_t*)g_Uart1Buf; 
 
 void USART2_IRQHandler(void)
 {
@@ -226,50 +223,37 @@ void USART2_IRQHandler(void)
 	        huart3.pRxBuffPtr[huart3.RxXferCount++]=usart_data_receive(USART2);
 			if(huart3.RxXferCount>=huart3.RxXferSize)
 				huart3.RxXferCount=0;
-		}
+			}
 		else
 			usart_data_receive(USART2);
-       // }
+      
     }
-    if(RESET != usart_interrupt_flag_get(USART2, USART_INT_FLAG_TBE)){
-        /* transmit data */
-      //  usart_data_transmit(USART0, txbuffer[txcount++]);
-      //  if(txcount == tx_size){
-      //      usart_interrupt_disable(USART0, USART_INT_TBE);
-     //   }
-    }
+//   if(RESET != usart_flag_get(USART2, USART_FLAG_IDLEF))
+//	{
+//		huart3.rcv_flag =1;
+//		usart_data_receive(UART3);
+//        /* transmit data */
+//    }
 }
 
 void UART3_IRQHandler(void)
 {
     if(RESET != usart_interrupt_flag_get(UART3, USART_INT_FLAG_RBNE)){
         /* receive data */
-//	 if(huart4.pRxBuffPtr!=NULL)
-//     {  huart4.pRxBuffPtr[huart4.RxXferCount++]=usart_data_receive(UART3);
-//		if(huart4.RxXferCount>=huart4.RxXferSize)
-//			huart4.RxXferCount=0;
-//	 }
-//	 else
-//	 	usart_data_receive(UART3);
-		
-		g_Uart5Buf[RxUart5Counter++]=usart_data_receive(UART3);
-		if(RxUart5Counter >UART5_RX_BUF_SIZE)RxUart5Counter = 0;
-	 
-	     usart_interrupt_flag_clear(UART3, USART_INT_FLAG_RBNE);
+	 if(huart4.pRxBuffPtr!=NULL)
+     {  huart4.pRxBuffPtr[huart4.RxXferCount++]=usart_data_receive(UART3);
+		if(huart4.RxXferCount>=huart4.RxXferSize)
+			huart4.RxXferCount=0;
+		}
+	 else
+	 	usart_data_receive(UART3);
     }
-	if(RESET != usart_interrupt_flag_get(UART3, USART_INT_FLAG_IDLE)){
-		
-		RxUart5Counter_flag =1;
-		usart_data_receive(UART3);
-		usart_interrupt_flag_clear(UART3, USART_INT_FLAG_IDLE);
-	}
-	
-    if(RESET != usart_interrupt_flag_get(UART3, USART_INT_FLAG_TBE)){
+	 if(RESET != usart_interrupt_flag_get(UART3, USART_INT_FLAG_TBE)){
         /* transmit data */
       //  usart_data_transmit(USART0, txbuffer[txcount++]);
       //  if(txcount == tx_size){
-     //       usart_interrupt_disable(USART0, USART_INT_TBE);
-        //}
+      //      usart_interrupt_disable(USART0, USART_INT_TBE);
+     //   }
     }
 }
 
@@ -295,26 +279,31 @@ void UART4_IRQHandler(void)
     }
 }
 
-#ifdef GD32F10X_CL
-void CAN0_RX0_IRQHandler(void)
-#else
-void USBD_LP_CAN0_RX0_IRQHandler(void)//bms
-#endif
+
+void USBD_LP_CAN0_RX0_IRQHandler(void)
 {
     /* check the receive message */
     can_message_receive(CAN0, CAN_FIFO0, &receive_message);
    /* if((0x321 == receive_message.rx_sfid)&&(CAN_FF_STANDARD == receive_message.rx_ff) && (1 == receive_message.rx_dlen))
 	{
         receive_flag = SET;
-    }
-	*/
- 
-    #ifdef CAN_TRASMITER_SUPPORT
-	//Can0RxProc(&receive_message);
-	
-	 	
-	  Can1RxProc(&receive_message);
-	#else
+    }*/
+    //mcu
+//    #ifdef GROWATT_BMS
+//	if(  (0x0311 == receive_message.rx_sfid
+//		||0x0312 == receive_message.rx_sfid
+//		||0x0313 == receive_message.rx_sfid
+//		||0x0314 == receive_message.rx_sfid
+//		||0x0315 == receive_message.rx_sfid
+//		||0x0316 == receive_message.rx_sfid
+//		||0x0317 == receive_message.rx_sfid
+//		||0x0318 == receive_message.rx_sfid
+//		||0x0319 == receive_message.rx_sfid)
+//		&&(CAN_FF_STANDARD == receive_message.rx_ff))
+//	{
+//       CanGrowattParse(receive_message.rx_sfid,receive_message.rx_data,receive_message.rx_dlen);
+//    }
+//	#else
     if(  (0x001806E600 == receive_message.rx_efid
 		||0x001806E601 == receive_message.rx_efid
 		||0x001806E602 == receive_message.rx_efid
@@ -324,7 +313,11 @@ void USBD_LP_CAN0_RX0_IRQHandler(void)//bms
 	{
        CanMcuParse(receive_message.rx_efid,receive_message.rx_data,receive_message.rx_dlen);
     }
-	else if((0x001806E610 == receive_message.rx_efid
+	else if(
+			#ifdef  CHARGE_STATION
+			CAN_FF_EXTENDED == receive_message.rx_ff
+			#else
+			(0x001806E610 == receive_message.rx_efid
 			||0x001806E611 == receive_message.rx_efid
 			||0x001806E612 == receive_message.rx_efid
 			||0x001806E613 == receive_message.rx_efid
@@ -333,50 +326,69 @@ void USBD_LP_CAN0_RX0_IRQHandler(void)//bms
 			||0x001806E616 == receive_message.rx_efid
 			||0x001806E617 == receive_message.rx_efid
 			||0x001806E618 == receive_message.rx_efid
-			||0x001806E620 == receive_message.rx_efid
+			//||0x001806E620 == receive_message.rx_efid
+			||0x001806E61A == receive_message.rx_efid
 			||0x001806E516 == receive_message.rx_efid)
-			&&(CAN_FF_EXTENDED == receive_message.rx_ff))
+			&&(CAN_FF_EXTENDED == receive_message.rx_ff)
+		 	#endif
+			)
 	{
        CanBmsParse(receive_message.rx_efid,receive_message.rx_data,receive_message.rx_dlen);
     }
-    #endif
+	//#endif
 		
 }
 
-void CAN1_RX0_IRQHandler(void) //vcu
-{
-    /* check the receive message */
-    can_message_receive(CAN1, CAN_FIFO0, &receive1_message);
-
-    //Can1RxProc(&receive1_message);//
-	Can0RxProc(&receive1_message);
-   /* if((0x321 == receive_message.rx_sfid)&&(CAN_FF_STANDARD == receive_message.rx_ff) && (1 == receive_message.rx_dlen))
-	{
-        receive_flag = SET;
-    }*/
-
-		
-}
 
 void EXTI0_IRQHandler(void)
 {
     if (RESET != exti_interrupt_flag_get(EXTI_0)) {
        // gd_eval_led_toggle(LED3);
-//        HAL_GPIO_EXTI_Callback(EXTI_0);
+        HAL_GPIO_EXTI_Callback(EXTI_0);
         exti_interrupt_flag_clear(EXTI_0);
     }
 }
 
 void TIMER1_IRQHandler(void)
 {
-    if (timer_interrupt_flag_get(TIMER1, TIMER_INT_FLAG_UP) == SET) // 获取TIMERx 中断标志 函数成功获取返回SET,否则RESET�?
+    if (timer_interrupt_flag_get(TIMER1, TIMER_INT_FLAG_UP) == SET) //  TIMERx  SET, RESET 
     {  
-				displayInit();
+		//displayInit();
         if (result[0] != 0)
         {
             sif_send_data_handle(state_mode);
         }
-        timer_interrupt_flag_clear(TIMER1, TIMER_INT_FLAG_UP);// 清除中断位标�?
-                                                              // 下面实现自己的函数�?
+        timer_interrupt_flag_clear(TIMER1, TIMER_INT_FLAG_UP);                                                     
     }
 }
+
+/*!
+    \brief      this function handles RTC alarm interrupt request
+    \param[in]  none
+    \param[out] none
+    \retval     none
+*/
+#if 0
+void RTC_Alarm_IRQHandler(void)
+{
+    if(RESET != rtc_interrupt_flag_get(RTC_INT_FLAG_ALARM)){
+        /* clear the RTC alarm and EXTI_17 interrupt flags */
+        rtc_interrupt_flag_clear(RTC_INT_FLAG_ALARM);
+        exti_interrupt_flag_clear(EXTI_17);
+        /* update RTC alarm time */
+        rtc_register_sync_wait();
+        /* wait until last write operation on RTC registers has finished */
+        rtc_lwoff_wait();
+        rtc_counter_set(0U);
+        /* wait until last write operation on RTC registers has finished */
+        rtc_lwoff_wait();
+        rtc_alarm_config(ALARM_TIME_INTERVAL);
+        /* wait until last write operation on RTC registers has finished */
+        rtc_lwoff_wait();
+        /* feed dog */
+        fwdgt_counter_reload();
+    }
+}
+
+#endif
+

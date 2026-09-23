@@ -4,17 +4,19 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+AT_CMD_DEF g_AtCmdState = AT_CMD_NONE;
+uint8_t g_AtAckState = AT_ACK_NONE;
+uint8_t g_FtpAtAckState = AT_ACK_NONE;
 
-AT_CMD_DEF g_AtCmdState=AT_CMD_NONE;
-uint8_t g_AtAckState=AT_ACK_NONE;
 uint8_t g_GsmRbuffer[GSM_BUFFER];
-uint32_t g_RxGsmCounter=0;
-uint32_t g_RxGsmParseSize=0;
-uint32_t g_RxGsmParsePos=0;
-//uint32_t g_RxGsmParseSize=0;
-
-uint8_t msgid=0;
-uint8_t g_endmark[]={0x1a,0X00,0x0d,0x0a};
+uint32_t g_RxGsmCounter = 0;
+uint32_t g_RxGsmParseSize = 0;
+uint32_t g_RxGsmParsePos = 0;
+// uint32_t g_RxGsmParseSize=0;
+uint8_t ota_finsh = 0;
+ uint16_t offcount =0;
+uint8_t msgid = 0;
+uint8_t g_endmark[] = {0x1a, 0X00, 0x0d, 0x0a};
 
 
 #ifdef E_SIM_SUPPORT
@@ -28,17 +30,35 @@ char *Defualt_URL= "AT+CIPSTART=\"TCP\",\"mqtt-2.omnivoltaic.com\",\"1883\"\r\n"
 
 
 #ifdef E_MOB48V_PROJECT
-const uint8_t g_MqttPubFixedPath[]="dt/V01/GPRSV2/VCUA/\0";
+#ifdef E_MOB48V_PROJECT_BAT
+const uint8_t g_MqttPubFixedPath[]="dt/V01/GPRSV2/\0";
+const uint8_t g_MqttSubFixedPath[]="cmd/V01/GPRSV2/+/BATT/\0";
+const uint8_t g_MqttComparePath[]="cmd/V01/GPRSV2/\0";
+const uint8_t g_MqttProductName[]="/BATT/\0";
+#else
+const uint8_t g_MqttPubFixedPath[]="dt/V01/GPRSV2/\0";
 const uint8_t g_MqttSubFixedPath[]="cmd/V01/GPRSV2/+/VCUA/\0";
 const uint8_t g_MqttComparePath[]="cmd/V01/GPRSV2/\0";
+const uint8_t g_MqttProductName[]="/VCUA/\0";
+#endif
+#elif defined(CHARGE_STATION)
+const uint8_t g_MqttPubFixedPath[]="dt/V01/GPRSV2/\0";
+const uint8_t g_MqttSubFixedPath[]="cmd/V01/GPRSV2/+/VCUA/\0";
+const uint8_t g_MqttComparePath[]="cmd/V01/GPRSV2/\0";
+const uint8_t g_MqttProductName[]="/VCUA/\0";
+
 #elif defined(P10KW_PROJECT)
-const uint8_t g_MqttPubFixedPath[]="dt/V01/GPRSV2/OS5K/\0";
+const uint8_t g_MqttPubFixedPath[]="dt/V01/GPRSV2/\0";
 const uint8_t g_MqttSubFixedPath[]="cmd/V01/GPRSV2/+/OS5K/\0";
 const uint8_t g_MqttComparePath[]="cmd/V01/GPRSV2/\0";
+const uint8_t g_MqttProductName[]="/OS5K/\0";
+
 #else
 const uint8_t g_MqttPubFixedPath[]="dt/V01/GPRSV2/\0";
 const uint8_t g_MqttSubFixedPath[]="cmd/V01/GPRSV2/+/\0";
 const uint8_t g_MqttComparePath[]="cmd/V01/GPRSV2/\0";
+const uint8_t g_MqttProductName[]="/\0";
+
 #endif
 
 #define SMS_INDEX_SIZE 14
@@ -74,7 +94,7 @@ uint8_t g_GsmExist=0;
 	,0x30,0x13,0x00,0x08,0x76,0x61,0x6C,0x65,0x74,0x72,0x6F,0x6E,0x68,0x65,0x6C,0x6C,0x6F,0x72,0x61,0x76,0x69
 };*/
 
-#define TOPIC_LEN    64
+#define TOPIC_LEN    128
 
 char MQTT_ClienID[60];
 char MQTT_topic_ppid[TOPIC_LEN];
@@ -87,7 +107,9 @@ char MQTT_topic_ppid_Subscribe[60];
 extern TIMER_TypeDef g_AtAckTout_timer;
 
 //extern UART_HandleTypeDef huart1;   
+extern UART_HandleTypeDef huart3;   //SIM COM
 extern UART_HandleTypeDef huart2;   //SIM COM
+extern UART_HandleTypeDef huart1;   //SIM COM
 
 extern uint8_t g_Mqtt_hold;
 extern uint8_t g_SimCard_State;
@@ -103,26 +125,42 @@ extern uint8_t g_tokenState;
 extern uint8_t g_MqttReconnect;
 extern uint8_t g_NetConnect_State;
 
+extern SYS_STATE_CODE_TypeDef g_sysStateCode;
 
-extern SYS_STATE_CODE_TypeDef  g_sysStateCode;
-
-
-const AT_DEAL_TypeDef  g_atcmd_deal[AT_CMD_MAX_COUNT]=
+typedef struct 
 {
-	{AT_CMD_NONE,NULL,NULL,NULL,NULL},
-	{AT_CMD_WKUP,"START SIM800C \r\n","OK",AtCmdSend,NULL},
-	{AT_CMD_AT,"AT\r\n","OK",AtCmdSend,NULL},
-	{AT_CMD_ATE0,"ATE0\r\n","OK",AtCmdSend,NULL},
-	{AT_CMD_CIPCLOSE,"AT+CIPCLOSE\r\n","ERROR",AtCmdSend,NULL},
-	{AT_CMD_CIPSHUT,"AT+CIPSHUT\r\n","OK",AtCmdSend,NULL},
-	{AT_CMD_CPIN,"AT+CPIN?\r\n","READY",AtCmdSend,NULL},
-	{AT_CMD_CSQ,"AT+CSQ\r\n","OK",AtCmdSend,NULL},
-	{AT_CMD_CREG,"AT+CREG?\r\n","OK",AtCmdSend,NULL},
-	{AT_CMD_CGATT,"AT+CGATT?\r\n","OK",AtCmdSend,NULL},
-	{AT_CMD_CIICR,"AT+CIICR\r\n","OK",AtCmdSend,NULL},
-	{AT_CMD_CMGF,"AT+CMGF=1\r\n","OK",AtCmdSend,NULL},
-	{AT_CMD_CMGF_0,"AT+CMGF=0\r\n","OK",AtCmdSend,NULL},
+	char mqttftp_broker[MQTT_BROKER_LEN];
+	char mqttftp_port[MQTT_PORT_LEN];
+	char mqttftp_usename[MQTT_USENAME_LEN];
+	char mqttftp_password[MQTT_PASSWORD_LEN];
+	char mqttftp_filepath[APN_LEN*2];
+	char mqttftp_filenamels[APN_LEN];
+	char mqttftp_filename[APN_LEN];
+	
+}FTP_INF;
+
+FTP_INF ftp_inf;
+
+const AT_DEAL_TypeDef g_atcmd_deal[AT_CMD_MAX_COUNT] =
+	{
+		{AT_CMD_NONE, NULL, NULL, NULL, NULL},
+		{AT_CMD_WKUP, "START SIM800C \r\n", "OK", AtCmdSend, NULL},
+		{AT_CMD_AT, "AT\r\n", "OK", AtCmdSend, NULL},
+		{AT_CMD_ATE0, "ATE0\r\n", "OK", AtCmdSend, NULL},
+//		{AT_CMD_CIPCLOSE, "AT+CIPCLOSE\r\n", "ERROR", AtCmdSend, NULL},
+//		{AT_CMD_CIPSHUT, "AT+CIPSHUT\r\n", "OK", AtCmdSend, NULL},
+		{AT_CMD_CPIN, "AT+CPIN?\r\n", "READY", AtCmdSend, NULL},
+		{AT_CMD_CSQ, "AT+CSQ\r\n", "OK", AtCmdSend, NULL},//AT+CSQ
+		{AT_CMD_CREG, "AT+CREG?\r\n", "OK", AtCmdSend, NULL},
+		{AT_CMD_CGATT, "AT+CGATT?\r\n", "OK", AtCmdSend, NULL},
+		{AT_CMD_CIICR, "AT+CIICR\r\n", "OK", AtCmdSend, NULL},
+		{AT_CMD_CMGF, "AT+CMGF=1\r\n", "OK", AtCmdSend, NULL},
+		{AT_CMD_CMGF_0, "AT+CMGF=0\r\n", "OK", AtCmdSend, NULL},
+	#ifdef MODULE_4G
+	{AT_CMD_CMGDA,"AT+CMGD=1,4\r\n","OK",AtCmdSend,NULL},
+	#else
 	{AT_CMD_CMGDA,"AT+CMGDA=6\r\n","OK",AtCmdSend,NULL},
+	#endif
 	{AT_CMD_CMGR,"AT+CMGR=\r\n","OK",AtCmdCmgrSend,NULL},
 	{AT_CMD_CMGS,"AT+CMGS=\r\n",">",AtCmdCmgsSend,NULL},
 	{AT_CMD_CMGS_SMS,"AT\r\n","OK",AtCmdCmgsSMSSend,NULL},
@@ -146,7 +184,7 @@ const AT_DEAL_TypeDef  g_atcmd_deal[AT_CMD_MAX_COUNT]=
 	{AT_CMD_CGACT,"AT+CGACT\r\n","OK",AtCmdCgactSend,NULL},
 	{AT_CMD_CMQTTSTART,"AT+CMQTTSTART\r\n","OK",AtCmdSend,NULL},
 	{AT_CMD_CMQTTACCQ,"AT+CMQTTACCQ\r\n","OK",AtCmdMqttAccqSend,NULL},
-	{AT_CMD_CMQTTCONNECT,"AT+CMQTTCONNECT\r\n","+CMQTTCONNECT:",AtCmdMqttConnectSend,NULL},
+	{AT_CMD_CMQTTCONNECT,"AT+CMQTTCONNECT\r\n","+CMQTTCONNECT:1111",AtCmdMqttConnectSend,NULL},
 	{AT_CMD_CMQTTTOPIC,"AT+CMQTTTOPIC\r\n",">",AtCmdMqttTopicSend,AtCmdMqttTopicAck},
 	{AT_CMD_CMQTTPAYLOAD,"AT+CMQTTPAYLOAD\r\n",">",AtCmdMqttPayloadSend,AtCmdMqttPayloadAck},
 	{AT_CMD_CMQTTPUB,"AT+CMQTTPUB\r\n","OK",AtCmdMqttPubSend,NULL},
@@ -161,6 +199,7 @@ const AT_DEAL_TypeDef  g_atcmd_deal[AT_CMD_MAX_COUNT]=
 	{AT_CMD_SIMSWITCH,"AT+SWITCHSIM=?\r\n","OK",AtCmdSend,NULL},
 	{AT_CMD_DUALSIM,"AT+DUALSIM?\r\n","OK",AtCmdSend,NULL},
 	{AT_CMD_CICCID,"AT+CICCID\r\n","OK",AtCmdSend,NULL},
+	{AT_CMD_CEMODE,"AT+CEMODE=2\r\n","OK",AtCmdSend,NULL},
 	#endif
 };
 
@@ -184,7 +223,149 @@ const AT_PARSE_TypeDef  g_attag_parse[]=
 };
 
 
+void AtCmdSendsever(uint8_t *buffer);
+void AtCmdSendun(uint8_t *buffer);
+void AtCmdSendopen(uint8_t *buffer);
+void AtCmdSendClose(uint8_t *buffer);
+void AtCmdSendread(uint8_t *buffer);
+void AtCmdSendseek(uint8_t *buffer);
+void AtCmdSendDel(uint8_t *buffer);
 
+const AT_DEAL_TypeDef g_attag_ftp[] =
+{
+	{TAG_NONE, NULL, NULL}, 
+	{AT_CMD_FTPSTART,      "AT+CFTPSSTART\r\n",    "+CFTPSSTAR", 	AtCmdSend, NULL},
+	{AT_CMD_FTPLOGIN,      "AT+CFTPSLOGIN\r\n",    "+CFTPSLOGIN",   AtCmdSendsever, NULL},
+	
+	 
+	{AT_CMD_FTPFSLS,       "AT+FSLS\r\n",  		   "OK",   AtCmdSend, NULL},
+	{AT_CMD_FTPGETFILE,    "AT+CFTPSGETFILE\r\n",  "OK",   AtCmdSendun, NULL},
+	
+	{AT_CMD_FTPLOGOUT,      "AT+CFTPSLOGOUT\r\n",  "OK",   AtCmdSend, NULL},
+	{AT_CMD_FTPSTOP,        "AT+CFTPSSTOP\r\n",    "OK",   AtCmdSend, NULL},
+	{AT_CMD_FTPFILEOPEN,    "AT+FSOPEN\r\n",       "OK",   AtCmdSendopen, NULL},
+	
+	{AT_CMD_FTPFILESLEEK,   "AT+FSSEEK\r\n",       "OK",   AtCmdSendseek, NULL},
+	{AT_CMD_FTPFILEREAD,    "AT+FSREAD\r\n",       "OK",   AtCmdSendread, NULL},
+	{AT_CMD_FTPFILECLOSE,   "AT+FSCLOSE\r\n",      "OK",   AtCmdSendClose, NULL},
+	{AT_CMD_FTPFILEDEL,     "AT+FSDEL\r\n",        "OK",   AtCmdSendDel, NULL},
+ //{AT_CMD_FTPPORT, "AT+FTPPORT\r\n", "OK", 	NULL, NULL},
+ //{AT_CMD_FTPNAME, "AT+FTPGETNAME\r\n", "OK", AtCmdSendname, NULL},
+ //{AT_CMD_FTPPATH, "AT+FTPGETPATH=\"\"\r\n", "OK", AtCmdSend, NULL},
+ //{AT_CMD_FTPGET,  "AT+FTPGET=0\r\n", "OK", 	  AtCmdSend, NULL},
+ //{AT_CMD_FTPRANTX, "AT+CFTRANTX\r\n", "OK",  AtCmdSendrantx, NULL},
+		 
+};
+
+
+void AtCmdSendsever(uint8_t *buffer)
+{
+   uint8_t temp_uarl[128] = {"ftp.omnivoltaic.com"};
+	
+	//uint8_t temp_uarl[32] = {"47.108.134.22"};
+	uint8_t temp_uarl_1[32] = {"esther_liao"};
+	
+	uint8_t temp_uarl_2[32] = {"oves1234"};
+	uint8_t temp_uarl_3[32] = {"2021"};
+
+	memcpy(ftp_inf.mqttftp_port,temp_uarl_3,strlen(temp_uarl_3));
+	memcpy(ftp_inf.mqttftp_password,temp_uarl_2,strlen(temp_uarl_2));
+	memcpy(ftp_inf.mqttftp_broker,temp_uarl,strlen(temp_uarl));
+	memcpy(ftp_inf.mqttftp_usename,temp_uarl_1,strlen(temp_uarl_1));
+
+	if (strlen(ftp_inf.mqttftp_broker) > 8)
+	{
+		if (strlen(ftp_inf.mqttftp_usename) > 0 && strlen(ftp_inf.mqttftp_password)>0)
+		{
+			sprintf((char *)temp_uarl, "AT+CFTPSLOGIN=\"%s\",%s,\"%s\",\"%s\",0\r\n", ftp_inf.mqttftp_broker, ftp_inf.mqttftp_port,  ftp_inf.mqttftp_usename,  ftp_inf.mqttftp_password);
+		}
+		AtCmdSend(temp_uarl);
+	}
+}
+
+ 
+
+void AtCmdSendun(uint8_t *buffer)
+{
+	uint8_t temp_uarl[128];//Inverter/
+	
+	//memcpy(ftp_inf.mqttftp_filename,"/test_101.bin",strlen("/test_101.bin")); 
+	{
+		sprintf((char *)temp_uarl, "AT+CFTPSGETFILE=\"%s\",1,0\r\n", ftp_inf.mqttftp_filename);
+		AtCmdSend(temp_uarl);
+	}
+}
+
+
+ 
+
+
+void AtCmdSendfsls(uint8_t *buffer)
+{
+	uint8_t temp_uarl[64] ;
+	{
+		sprintf((char *)temp_uarl, "AT+FSLS\r\n");    //test_101
+		AtCmdSend(temp_uarl);
+		offcount = 0;
+	}
+}
+
+
+void AtCmdSendopen(uint8_t *buffer)
+{
+	uint8_t temp_uarl[64] ;
+	{
+		sprintf((char *)temp_uarl, "AT+FSOPEN=%s,2\r\n",ftp_inf.mqttftp_filename);    //test_101
+		AtCmdSend(temp_uarl);
+		offcount = 0;
+	}
+}
+ 
+void AtCmdSendseek(uint8_t *buffer)
+{
+	uint8_t temp_uarl[64] ;
+	uint16_t offset = 1024;
+	
+	{
+		sprintf((char *)temp_uarl, "AT+FSSEEK=1,%d,0\r\n",offset*offcount);
+		AtCmdSend(temp_uarl);
+		offcount ++;
+	}
+}
+
+
+ 
+void AtCmdSendread(uint8_t *buffer)
+{
+	uint8_t temp_uarl[64] ;
+	uint16_t len = 1024;
+	{
+		sprintf((char *)temp_uarl, "AT+FSREAD=1,%d\r\n",len);
+		AtCmdSend(temp_uarl);
+	}
+}
+
+
+void AtCmdSendClose(uint8_t *buffer)
+{
+	uint8_t temp_uarl[128] ;
+	 
+	{
+		sprintf((char *)temp_uarl, "AT+FSCLOSE=1\r\n");
+		AtCmdSend(temp_uarl);
+	}
+}
+void AtCmdSendDel(uint8_t *buffer)
+{
+	uint8_t temp_uarl[64];//Inverter/
+	{
+		if(strlen(ftp_inf.mqttftp_filenamels)> 0)
+		sprintf((char *)temp_uarl, "AT+FSDEL=%s\r\n", ftp_inf.mqttftp_filenamels);
+		else
+		sprintf((char *)temp_uarl, "AT+FSDEL=%s\r\n", ftp_inf.mqttftp_filename);	
+		AtCmdSend(temp_uarl);
+	}
+}
 
 #if 0
  void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
@@ -249,10 +430,15 @@ void AtCmdInit(void)
 
 	memset( g_PhoneNo,0x00,PHONE_NO_SIZE);	
 
-	
+	#ifdef GD32F10X_MD
+	huart3.pRxBuffPtr=g_GsmRbuffer;
+	huart3.RxXferCount=0;
+	huart3.RxXferSize=GSM_BUFFER;
+	#else
     huart2.pRxBuffPtr=g_GsmRbuffer;
 	huart2.RxXferCount=0;
 	huart2.RxXferSize=GSM_BUFFER;
+	#endif
 	//HAL_UART_Abort(&huart2);
 		
 	//HAL_UART_Receive_IT(&huart2,g_GsmRbuffer,GSM_BUFFER);
@@ -276,7 +462,11 @@ void AtCmdSend(uint8_t * buffer)
     uint16_t size=(uint16_t)strlen((char*)buffer);
 
   //   HAL_UART_Transmit(&huart2,buffer,size,size*20);
+  #ifdef GD32F10X_MD
+    Uart3Send(buffer,size);
+  #else
     Uart2Send(buffer,size);
+  #endif
 	 #ifdef DEBUG_AT_LOG
 	  LogPrintf("MCU:");
 	 //HAL_UART_Transmit(&huart3,buffer,size,1000);
@@ -287,7 +477,11 @@ void AtCmdSend(uint8_t * buffer)
 void AtCmdLenSend(uint8_t * buffer,uint16_t size)
 {
    //  HAL_UART_Transmit(&huart2,buffer,size,size*20);
+   #ifdef GD32F10X_MD
+    Uart3Send(buffer,size);
+   #else
    Uart2Send(buffer,size);
+   #endif
 	 #ifdef DEBUG_AT_LOG
 	  LogPrintf("MCU:");
 	// HAL_UART_Transmit(&huart3,buffer,size,1000);
@@ -303,18 +497,21 @@ void AtCmdCsttSend(uint8_t * buffer)
 	if(strlen((char*)g_UserSet.NetInfor.apn)>0)
 	{	
 
-		if(strlen(g_UserSet.NetInfor.apn_usename)>0&&strlen(g_UserSet.NetInfor.apn_password))
-		{	sprintf((char*)temp_apn,"AT+CSTT=\"%s\",\"%s\",\"%s\"\r\n",g_UserSet.NetInfor.apn,g_UserSet.NetInfor.apn_usename,\
-			g_UserSet.NetInfor.apn_password);
-			}
+		if (strlen(g_UserSet.NetInfor.apn_usename) > 0 && strlen(g_UserSet.NetInfor.apn_password))
+		{
+			sprintf((char *)temp_apn, "AT+CSTT=\"%s\",\"%s\",\"%s\"\r\n", g_UserSet.NetInfor.apn, g_UserSet.NetInfor.apn_usename,
+					g_UserSet.NetInfor.apn_password);
+		}
 		else
-		{	sprintf((char*)temp_apn,"AT+CSTT=\"%s\",\"\",\"\"\r\n",g_UserSet.NetInfor.apn);
-			}
+		{
+			sprintf((char *)temp_apn, "AT+CSTT=\"%s\",\"\",\"\"\r\n", g_UserSet.NetInfor.apn);
+		}
 		AtCmdSend(temp_apn);
-		}
+	}
 	else
-	{	AtCmdSend((uint8_t*)Defualt_APN);
-		}
+	{
+		AtCmdSend((uint8_t *)Defualt_APN);
+	}
 }
 
 void AtCmdCmgrSend(uint8_t * buffer)
@@ -356,13 +553,27 @@ void AtCmdCgactSend(uint8_t *buffer)
 void AtCmdMqttAccqSend(uint8_t *buffer)
 {
 	uint8_t temp[64]={0};
+	uint8_t clientid[32];
+	uint16_t size=strlen((char*)g_UserSet.Payg.oem_id);
+
+	if(size>20)
+		size=20;
+	memset(clientid,0x00,32);
+	memcpy(clientid,(char*)g_UserSet.Payg.oem_id,size);
 
 	memset(temp,0x00,64);
 
 	if(g_mqtt_broker_index>=1)
-		sprintf((char*)temp,"AT+CMQTTACCQ=%d,\"%s\"\r\n",1,"testmqtt2");
+	{	
+		clientid[size]='2';
+		sprintf((char*)temp,"AT+CMQTTACCQ=%d,\"%s\"\r\n",1,clientid);
+		
+		}
 	else
-		sprintf((char*)temp,"AT+CMQTTACCQ=%d,\"%s\"\r\n",0,"testmqtt1");
+	{
+		clientid[size] = '1';
+		sprintf((char *)temp, "AT+CMQTTACCQ=%d,\"%s\"\r\n", 0, clientid);
+	}
 
 	AtCmdSend(temp);
 
@@ -382,16 +593,16 @@ void AtCmdMqttConnectSend(uint8_t *buffer)
 	if(g_mqtt_broker_index>=1)
 	{
 		if(strlen(g_UserSet.NetInfor.mqtt_usename)==0)
-			sprintf((char*)temp,"AT+CMQTTCONNECT=%d,\"tcp://%s:%s\",7200,1,,\r\n",1,g_UserSet.NetInfor.mqtt_broker,g_UserSet.NetInfor.mqtt_port);
+			sprintf((char*)temp,"AT+CMQTTCONNECT=%d,\"tcp://%s:%s\",1800,1,,\r\n",1,g_UserSet.NetInfor.mqtt_broker,g_UserSet.NetInfor.mqtt_port);
 		else	
-			sprintf((char*)temp,"AT+CMQTTCONNECT=%d,\"tcp://%s:%s\",7200,1,\"%s\",\"%s\"\r\n",1,g_UserSet.NetInfor.mqtt_broker,g_UserSet.NetInfor.mqtt_port,g_UserSet.NetInfor.mqtt_usename,g_UserSet.NetInfor.mqtt_password);
+			sprintf((char*)temp,"AT+CMQTTCONNECT=%d,\"tcp://%s:%s\",1800,1,\"%s\",\"%s\"\r\n",1,g_UserSet.NetInfor.mqtt_broker,g_UserSet.NetInfor.mqtt_port,g_UserSet.NetInfor.mqtt_usename,g_UserSet.NetInfor.mqtt_password);
 		}
 	else
 	{
 		if(strlen(g_UserSet.NetInforFactory.mqtt_usename)==0)
-			sprintf((char*)temp,"AT+CMQTTCONNECT=%d,\"tcp://%s:%s\",7200,1,,\r\n",0,g_UserSet.NetInforFactory.mqtt_broker,g_UserSet.NetInforFactory.mqtt_port);
+			sprintf((char*)temp,"AT+CMQTTCONNECT=%d,\"tcp://%s:%s\",1800,1,,\r\n",0,g_UserSet.NetInforFactory.mqtt_broker,g_UserSet.NetInforFactory.mqtt_port);
 		else	
-			sprintf((char*)temp,"AT+CMQTTCONNECT=%d,\"tcp://%s:%s\",7200,1,\"%s\",\"%s\"\r\n",0,g_UserSet.NetInforFactory.mqtt_broker,g_UserSet.NetInforFactory.mqtt_port,g_UserSet.NetInforFactory.mqtt_usename,g_UserSet.NetInforFactory.mqtt_password);
+			sprintf((char*)temp,"AT+CMQTTCONNECT=%d,\"tcp://%s:%s\",1800,1,\"%s\",\"%s\"\r\n",0,g_UserSet.NetInforFactory.mqtt_broker,g_UserSet.NetInforFactory.mqtt_port,g_UserSet.NetInforFactory.mqtt_usename,g_UserSet.NetInforFactory.mqtt_password);
 		}
 
 	AtCmdSend(temp);
@@ -595,18 +806,21 @@ void AtCmdCipStart(uint8_t * buffer)
 	if(strlen(g_UserSet.NetInfor.mqtt_broker)>8)
 	{	
 
-		if(strlen(g_UserSet.NetInfor.mqtt_usename)>0&&strlen(g_UserSet.NetInfor.mqtt_password))
-		{	sprintf((char*)temp_uarl,"AT+CIPSTART=\"TCP\",\"%s\",\"%s\",\"%s\",\"%s\"\r\n",g_UserSet.NetInfor.mqtt_broker,g_UserSet.NetInfor.mqtt_port,\
-			g_UserSet.NetInfor.mqtt_usename,g_UserSet.NetInfor.mqtt_password);
-			}
+		if (strlen(g_UserSet.NetInfor.mqtt_usename) > 0 && strlen(g_UserSet.NetInfor.mqtt_password))
+		{
+			sprintf((char *)temp_uarl, "AT+CIPSTART=\"TCP\",\"%s\",\"%s\",\"%s\",\"%s\"\r\n", g_UserSet.NetInfor.mqtt_broker, g_UserSet.NetInfor.mqtt_port,
+					g_UserSet.NetInfor.mqtt_usename, g_UserSet.NetInfor.mqtt_password);
+		}
 		else
-		{	sprintf((char*)temp_uarl,"AT+CIPSTART=\"TCP\",\"%s\",\"%s\"\r\n",g_UserSet.NetInfor.mqtt_broker,g_UserSet.NetInfor.mqtt_port);
-			}
+		{
+			sprintf((char *)temp_uarl, "AT+CIPSTART=\"TCP\",\"%s\",\"%s\"\r\n", g_UserSet.NetInfor.mqtt_broker, g_UserSet.NetInfor.mqtt_port);
+		}
 		AtCmdSend(temp_uarl);
-		}
+	}
 	else
-	{	AtCmdSend((uint8_t*)Defualt_URL);
-		}
+	{
+		AtCmdSend((uint8_t *)Defualt_URL);
+	}
 }
 
 void AtCmdCipSendOk(uint8_t * buffer)
@@ -690,8 +904,15 @@ void AtCmdCipSend(uint8_t * buffer)
 					case MQTT_REQ_RAML:
 						GattMultiFieldMerge(); 
 						break;
+					#ifdef ABACUSLEDER_SUPPORT
 					case MQTT_REQ_ABAC:
 						GattAbacFieldMerge(); 
+						break;
+					#endif
+					case MQTT_REQ_SLOT_BMS:
+						#ifdef CHARGE_STATION
+						GattSlotBmsFieldMerge();
+						#endif
 						break;
 					case MQTT_REQ_OTA:
 						break;
@@ -715,22 +936,23 @@ void AtCmdCipSend(uint8_t * buffer)
 
 			packetLength= messageLength+topicLength+2;//31
 
-			if(packetLength>127)
-			{
-				length_message_flag = (packetLength/128);
-				packetLength = packetLength-(length_message_flag-1)*128;
-				AtCmdLenSend((uint8_t*)&packetLength,1);
-				AtCmdLenSend((uint8_t*)&length_message_flag,1);
-			}else
-			{
-				AtCmdLenSend((uint8_t*)&packetLength,1);
-			}
-			packLengthInterval=0;
-			AtCmdLenSend((uint8_t*)&packLengthInterval,1);
-			AtCmdLenSend((uint8_t*)&topicLength,1);
-			AtCmdLenSend((uint8_t*)MQTT_topic_ppid,topicLength);
-			HAL_Delay(10);
-			AtCmdLenSend(json,messageLength);
+		if (packetLength > 127)
+		{
+			length_message_flag = (packetLength / 128);
+			packetLength = packetLength - (length_message_flag - 1) * 128;
+			AtCmdLenSend((uint8_t *)&packetLength, 1);
+			AtCmdLenSend((uint8_t *)&length_message_flag, 1);
+		}
+		else
+		{
+			AtCmdLenSend((uint8_t *)&packetLength, 1);
+		}
+		packLengthInterval = 0;
+		AtCmdLenSend((uint8_t *)&packLengthInterval, 1);
+		AtCmdLenSend((uint8_t *)&topicLength, 1);
+		AtCmdLenSend((uint8_t *)MQTT_topic_ppid, topicLength);
+		HAL_Delay(10);
+		AtCmdLenSend(json, messageLength);
 
 			 AtCmdLenSend((uint8_t*)&message_end,1);
 			break;
@@ -800,6 +1022,7 @@ HAL_Delay(2000);
 void AtSetTopicId(uint8_t * ext_topic)
 {
 
+	uint8_t tempstr[128]={0};
 	//Creat Client ID
 	memset(MQTT_ClienID,0x00,20);
 	#ifdef PUMP_PROJECT
@@ -818,7 +1041,17 @@ void AtSetTopicId(uint8_t * ext_topic)
 	//Creat Topic
 	memset(MQTT_topic_ppid, 0x00,TOPIC_LEN);
 	//memcpy(MQTT_topic_ppid, "_OVES/GPRSV1/1/", 15);
-	memcpy(MQTT_topic_ppid, g_MqttPubFixedPath, strlen((char*)g_MqttPubFixedPath));
+
+	if(strlen(g_UserSet.fleed)>0&&strlen(g_UserSet.fleed)<40)
+	{
+		sprintf(tempstr,"%s%s%s",g_MqttPubFixedPath,g_UserSet.fleed,g_MqttProductName);
+		memcpy(MQTT_topic_ppid, tempstr, strlen(tempstr));
+		}
+	else
+	{	sprintf(tempstr,"%s%s",g_MqttPubFixedPath,g_MqttProductName);
+		memcpy(MQTT_topic_ppid, tempstr, strlen(tempstr));
+		} 
+	
 	memcpy(MQTT_topic_ppid + strlen((char*)MQTT_topic_ppid), MQTT_ClienID, strlen((char*)MQTT_ClienID));
 
 
@@ -888,16 +1121,54 @@ void AtCmdMerge(uint8_t cmd)
 	if(g_AtCmdState==AT_CMD_NONE)
 		return ;
 
+	#ifdef GD32F10X_MD
+	memset(g_GsmRbuffer,0x00,GSM_BUFFER);
+   	huart3.RxXferCount=0;
+	huart3.RxXferSize=GSM_BUFFER;
+    huart3.pRxBuffPtr=g_GsmRbuffer; 
+	#else
 	memset(g_GsmRbuffer,0x00,GSM_BUFFER);
    	huart2.RxXferCount=0;
 	huart2.RxXferSize=GSM_BUFFER;
-        huart2.pRxBuffPtr=g_GsmRbuffer; 
+    huart2.pRxBuffPtr=g_GsmRbuffer; 
+	#endif
 		
         g_RxGsmParsePos=0;
         g_RxGsmParseSize=0;	
 
-	
-	if(p->send!=NULL&&p->cmd!=NULL&&cmd<AT_CMD_MAX_COUNT)
+	if (p->send != NULL && p->cmd != NULL && cmd < AT_CMD_MAX_COUNT)
+		p->send(p->cmdstr);
+}
+
+
+
+
+void AtCmdMerge_ftp(uint8_t cmd)
+{
+	AT_DEAL_TypeDef *p = (AT_DEAL_TypeDef *)&g_attag_ftp[cmd];
+
+	g_AtCmdState = (AT_CMD_DEF)cmd;
+	g_AtAckState = AT_ACK_NONE;
+
+	//if (g_AtCmdState == AT_CMD_NONE)
+	//	return;
+
+	#ifdef GD32F10X_MD
+	memset(g_GsmRbuffer, 0x00, GSM_BUFFER);
+   	huart3.RxXferCount=0;
+	huart3.RxXferSize=GSM_BUFFER;
+    huart3.pRxBuffPtr=g_GsmRbuffer; 
+	#else
+	memset(g_GsmRbuffer,0x00,GSM_BUFFER);
+	huart2.RxXferCount = 0;
+	huart2.RxXferSize = GSM_BUFFER;
+	huart2.pRxBuffPtr = g_GsmRbuffer;
+	#endif
+
+	g_RxGsmParsePos = 0;
+	g_RxGsmParseSize = 0;
+
+	if (p->send != NULL && p->cmd != NULL && cmd < AT_CMD_MAX_COUNT)
 		p->send(p->cmdstr);
 }
 
@@ -972,6 +1243,8 @@ void AtCmdTokenParse(uint8_t*str,uint8_t*tag)
 	extern uint8_t g_bletkre;
 	#endif
 
+	//LogPrintf("TokenParse :%s\r\n ",str);
+
 	if(strstr((char*)str,"/cmd/code")!=NULL)
 		mqtt_cmd=TRUE;
 
@@ -1014,8 +1287,9 @@ void AtCmdTokenParse(uint8_t*str,uint8_t*tag)
 
 	for(i=0;i<value_len;i++)
 	{
-		if(p[i]!=' ')
-		{	*p_target=p[i];
+		if (p[i] != ' ')
+		{
+			*p_target = p[i];
 			p_target++;
 			token_len++;
 			}
@@ -1057,7 +1331,7 @@ void AtCmdTokenParse(uint8_t*str,uint8_t*tag)
 	token[23]= token_hi>>8;
 	token[22]= token_hi;
 		
-	#ifdef CAMP_PROJECT	
+	#if defined(CAMP_PROJECT)||	defined(BMS_CAMP_SUPPORT)
 	token[26]= CRC8(token + 13 ,13);	
 
 	CampSend(token,28);
@@ -1095,7 +1369,7 @@ void AtCmdTokenParse(uint8_t*str,uint8_t*tag)
 	return ;
 	#endif
 
-				p=&token[13] ;
+	p=&token[13] ;
 
         temp[3] = p[12];
         temp[2] = p[11];
@@ -1107,7 +1381,7 @@ void AtCmdTokenParse(uint8_t*str,uint8_t*tag)
         temp[4] = p[5];
 
 	memcpy((uint8_t*)payg.hast_input, temp, 8);
-
+    LogPrintf("hast_input %08X  %08X\r\n ",payg.hast_input[0],payg.hast_input[1]);
 	//payg.hast_input[0]=token_lo;
 	//payg.hast_input[1]=token_hi;
 
@@ -1115,7 +1389,6 @@ void AtCmdTokenParse(uint8_t*str,uint8_t*tag)
 	
 
 	#ifdef E_MOB48V_PROJECT
-
 	if( g_tokenState==TOKEN_OK)
 	{
 		#ifdef BMS_SMARTLI_SUPPROT
@@ -1207,11 +1480,11 @@ void AtCmdRamlParse(uint8_t*buf,uint8_t gsm)
 {
 	uint8_t tempBuff[128]={0},i=0;
 	
-	uint8_t *p=NULL;
+	uint8_t *p=NULL,*p_parse=NULL;
 
-	if(gsm)
+	/*if(gsm)
 		p=strstr(buf,"raml\":[]");
-	else
+	else*/
 		p=strstr(buf,"[]");
 	
 	if(p!=NULL)
@@ -1232,6 +1505,8 @@ void AtCmdRamlParse(uint8_t*buf,uint8_t gsm)
 		g_UserSet.raml_num=0;
 		memset(g_UserSet.raml,0x00,RAML_SIZE*4);
 
+		p_parse=strstr(buf,"\"raml\":");
+
 		for(list=LIST_ATT;list<LIST_COUNT;list++)
 		{
 			for(id=0;id<g_GattlistMemberNum[list];id++)
@@ -1240,10 +1515,11 @@ void AtCmdRamlParse(uint8_t*buf,uint8_t gsm)
 				{	
 					if(GattGetListProp(list,id,prop))
 					{
-						p=strstr(buf+7,(char*)prop);
+						p=strstr(p_parse+7,(char*)prop);
 						if(p!=NULL&&strstr((char*)g_UserSet.raml,(char*)prop)==NULL)
 						{
-							memcpy(g_UserSet.raml[g_UserSet.raml_num++],prop,4);
+							if(g_UserSet.raml_num<RAML_SIZE)
+								memcpy(g_UserSet.raml[g_UserSet.raml_num++],prop,4);
 							}
 						}
 				
@@ -1269,10 +1545,24 @@ void AtCmdRamlParse(uint8_t*buf,uint8_t gsm)
 			memcpy(tempBuff+strlen((char*)tempBuff),"]",1);
 			}
 
-		GattSetData( LIST_CMD, CMD_RAML, (uint8_t*)&tempBuff[7]);
+		memset(tempBuff,0x00,128);
+
+	   tempBuff[0]='[';
+	   for(i=0;i<g_UserSet.raml_num;i++)
+	   { 
+	  	 if(strlen(tempBuff)<24)
+	   		sprintf(tempBuff+strlen(tempBuff),"\"%s\",",g_UserSet.raml[i]);
+	   	}
+
+		if(g_UserSet.raml_num)
+			tempBuff[strlen(tempBuff)-1]=']';
+		else
+			tempBuff[strlen(tempBuff)]=']';
+
+		GattSetData( LIST_CMD, CMD_RAML, (uint8_t*)&tempBuff);
 		
 		if(gsm)
-			GattSetCmdUplinkData(tempBuff);
+			GattSetCmdRamlUplinkData(tempBuff);
 		}
 
 }
@@ -1337,6 +1627,22 @@ void AtCmdPhoneNoParse(uint8_t*str,uint8_t*tag)
 	tag_len=strlen((char*)tag);
 	
 
+	#ifdef MODULE_4G
+	#ifdef SMS_4G_SUPPORT
+	p=AtStrStr(str, "\",\"");
+
+	if(p!=NULL)
+	{
+		p+=3;
+		value_len=AtCmdGetValueLen((char*)p,'\"');	
+
+		memcpy(g_PhoneNo,p,value_len);
+		
+		}
+
+	LogPrintf("GSM: PhoneNo:%s \r\n",g_PhoneNo);
+	#endif
+	#else
 	p=AtStrStr(str, "\"+");
 
 	if(p!=NULL)
@@ -1347,6 +1653,7 @@ void AtCmdPhoneNoParse(uint8_t*str,uint8_t*tag)
 		memcpy(g_PhoneNo,p,value_len);
 		
 		}
+	#endif
 
 }
 
@@ -1401,14 +1708,128 @@ void AtCmdSwitchParse(uint8_t*str,uint8_t*tag)
 		}
 }
 
-void AtCmdPaser(uint8_t *buffer,uint8_t cmd)
+uint8_t DecodePack[1024]={0};
+uint32_t g_OtaInfor_addr=0;
+
+ 
+void clear_filels(void)
 {
-	uint16_t pos=0,len_value=0,len_spec=0;
-	char *p=NULL,*p_buf=NULL;
+	memset(ftp_inf.mqttftp_filenamels,0,sizeof(ftp_inf.mqttftp_filenamels));
+}
+
+uint8_t getlen_filels(void)
+{
+  return strlen(ftp_inf.mqttftp_filenamels);
+}
+
+void AtCmdPaser_ftp(uint8_t *buffer, uint8_t cmd)
+{
+	uint16_t len_spec = 0,i=0;
+	char *p = NULL ;
+	uint32_t Flash_data = 0;
+	
+	
+	LogPrintf(" ftp_rcv %s ", buffer);
+	
+    p = strstr(buffer, "CONNECT");  //FlashPageErase(OTA_START_ADDR+i*PAGE_SIZE);
+	if (p != NULL)
+	{
+		len_spec= atoi(p+8);
+		if(len_spec < 1024) ota_finsh =1;
+		
+		//p = strstr(buffer, "\r\n\"");
+		//if (p != NULL)
+		{
+			memset(DecodePack,0,1024);
+			if(len_spec > 1000)
+			memcpy(DecodePack, p+14, len_spec);
+			else if(len_spec > 100)
+			memcpy(DecodePack, p+13, len_spec);
+			else if(len_spec > 10)
+			memcpy(DecodePack, p+12, len_spec);
+			else if(len_spec > 0)
+			memcpy(DecodePack, p+11, len_spec);
+			
+			if(len_spec<1024)
+			{
+				memset(DecodePack+(len_spec),0xff,(1024-len_spec));
+			}
+			
+			for(i=0;i<1024;i++)
+			{
+			//	LogPrintf("%02X ", p[i+13]);
+				LogPrintf("%02X ", DecodePack[i]);
+			}
+			if(len_spec > 0)
+			{
+				FlashPageProgram(OTA_START_ADDR+g_OtaInfor_addr,1024/4,(uint32_t*)DecodePack);
+				g_OtaInfor_addr+=1024;
+			}
+			
+			if(len_spec<1024)
+			{
+				HAL_Delay(100);
+				AtCmdMerge_ftp(AT_CMD_FTPFILECLOSE);
+				HAL_Delay(200);
+				 AtCmdMerge_ftp(AT_CMD_FTPFILEDEL);
+				 HAL_Delay(1000);
+				
+				OtaPrintf("---------OTA FINISH system reset----------- \r\n");
+
+				FlashPageErase(ApplicationAddress+PAGE_SIZE*127-0X2000);
+				HAL_Delay(5);
+				Flash_data=BootOtaModeflag;
+				FlashPageProgram(UpgradeOtaflagAddress,4,&Flash_data);
+				
+				HAL_Delay(5);
+				Flash_data=110*1024;
+				FlashPageProgram(UpgradeflagAddress,4,&Flash_data);
+				HAL_Delay(5);
+				__disable_fault_irq(); 
+				 NVIC_SystemReset();
+			}
+		}
+	}
+	
+	p = strstr(buffer, "FILES");
+	if (p != NULL)
+	{
+		memset(ftp_inf.mqttftp_filenamels,0,sizeof(ftp_inf.mqttftp_filenamels));
+		memcpy(ftp_inf.mqttftp_filenamels,p+8,32);
+		LogPrintf("FILES  %s ", ftp_inf.mqttftp_filenamels);
+	}
+	
+	p = strstr(buffer, "CFTPSGETFILE");
+	if (p != NULL)
+	{
+		len_spec= atoi(p+14);
+		if(len_spec == 0)
+			g_FtpAtAckState =  AT_ACK_OK;
+		else
+			set_ftpota_flag(0); // tui chu FTP
+		
+		OtaPrintf("--CFTPSGETFILE %d--- \r\n",len_spec);
+	}
+	
+	p = strstr(buffer, "ERROR");
+	if (p != NULL)
+	{
+		set_ftpota_flag(0); // tui chu FTP
+		OtaPrintf("--ERROR -clear FTP - \r\n");
+	}
+	
+}
+
+
+void AtCmdPaser(uint8_t *buffer, uint8_t cmd)
+{
+	uint16_t pos = 0, len_value = 0, len_spec = 0;
+	char *p = NULL, *p1 = NULL,*p_buf = NULL;
 	int temp;
 	uint8_t i,meta=0,value_len=0;
 	uint8_t tempBuff[128];
 	char*str=(char*)buffer;
+	double tomdbuff;
 
 	AT_DEAL_TypeDef *pdeal=NULL;
 	AT_PARSE_TypeDef *ptag=NULL;
@@ -1429,7 +1850,7 @@ void AtCmdPaser(uint8_t *buffer,uint8_t cmd)
 	if(strstr(str,"ERROR")!=NULL)
 	{
 
-		if(g_mqtt_broker_index>=1)
+		/*if(g_mqtt_broker_index>=1)
 		{
 			AtCmdMerge(AT_CMD_AT);
 			TimerAtTOutStart(5000U,TRUE);
@@ -1439,7 +1860,7 @@ void AtCmdPaser(uint8_t *buffer,uint8_t cmd)
 		else
 		{	
 			err_cnt++;
-			}
+			}*/
 		if(g_mqtt_broker_index==0&&err_cnt>6)
 		{
 			//AtCmdMerge(AT_CMD_AT);	
@@ -1450,6 +1871,21 @@ void AtCmdPaser(uint8_t *buffer,uint8_t cmd)
 			err_cnt=0;
 			}
 		
+		}
+
+	p=strstr(str,"+CMQTTCONNECT:");
+	if(p!=NULL)
+	{
+		len_value=AtCmdGetValueLen(p,',');
+		p+=len_value+1;
+
+		temp=atoi(p);
+
+		if(temp==0)
+		{	AtCmdMerge(AT_CMD_AT);
+			g_Mqtt_State=MQTT_STATE_PUB_CSQ;
+			}
+		//LogPrintf("-CMQTTCONNECT-%d-%s--%d- \r\n",atoi(p),p,len_value);
 		}
 	//CMQTTCONNLOST
 	if(strstr(str,"+CMQTTCONNLOST")!=NULL)
@@ -1487,14 +1923,22 @@ void AtCmdPaser(uint8_t *buffer,uint8_t cmd)
 	 if(strstr(str,"*ATREADY: 1")!=NULL)  //+CREG: 0,5
 	 {
 		AtCmdMerge(AT_CMD_AT);
+		#ifdef SMS_4G_SUPPORT
+		g_Sms_State=SMS_STATE_INIT;
+		#else
 		g_Mqtt_State=MQTT_STATE_CPIN;
+		#endif
 		TimerAtTOutStart(2000U,TRUE);
 	 	}
 	 
 	 if(strstr(str,"NO SERVICE,Flight Mode\0")!=NULL)  //+CREG: 0,5
 	 {
 		AtCmdMerge(AT_CMD_AT);
+		#ifdef SMS_4G_SUPPORT
 		g_Mqtt_State=MQTT_STATE_CFUN;	
+		#else
+		g_Mqtt_State=MQTT_STATE_CFUN;	
+		#endif
 		TimerAtTOutStart(5000U,TRUE);
 	 	}
 	 
@@ -1524,6 +1968,7 @@ void AtCmdPaser(uint8_t *buffer,uint8_t cmd)
 			
 			//if(g_GsmExist)
 				g_Mqtt_State=MQTT_STATE_CONNECT_CSQ;//MQTT_STATE_CGDCONT;
+				LogPrintf("GSM: Service online\r\n");
 			//else
 			//	g_Mqtt_State=MQTT_STATE_MQTTSTART;
 			}
@@ -1548,30 +1993,35 @@ void AtCmdPaser(uint8_t *buffer,uint8_t cmd)
 		{  
 			memset(g_CellID,0x00,CELL_ID_SIZE);
 			memcpy(g_CellID,p,len_value);
+			LogPrintf("Cell id: %s\r\n",g_CellID);
 			}
 		
 		}
 
-		if(strstr(str,"+CPIN:")!=NULL)
+	if (strstr(str, "+CPIN:") != NULL)
+	{
+		if (strstr(str, "READY") != NULL)
 		{
-			if(strstr(str,"READY")!=NULL)
-			{	GmsSetSimcardState(TRUE);
+			GmsSetSimcardState(TRUE);
 
-				//if(g_Mqtt_State==MQTT_STATE_INIT)
-				//	g_Mqtt_State=MQTT_STATE_CPIN;	
-				}
-			else 
-				GmsSetSimcardState(FALSE);
-			}
-	
-	#endif
+			// if(g_Mqtt_State==MQTT_STATE_INIT)
+			//	g_Mqtt_State=MQTT_STATE_CPIN;
+		}
+		else
+			GmsSetSimcardState(FALSE);
+	}
+
+#endif
 
 
-	if(strstr(str,"+CMTI")!=NULL)
+	if(strstr(str,"+CMTI")!=NULL||strstr(str,"+SMS FULL")!=NULL)
 	{
 		g_Sms_State=SMS_STATE_READ;
 		//g_Mqtt_State=MQTT_STATE_INIT;
 		g_Mqtt_hold=TRUE;
+		#ifdef MODULE_4G
+     	LogPrintf("GSM:Sms read  mqtt hold\r\n");
+		#endif
 		}
 
 	if((strstr(str,"+CPIN:")!=NULL||strstr(str,"ERROR")!=NULL)&&g_Sms_State==MQTT_STATE_CSQ)
@@ -1595,8 +2045,21 @@ void AtCmdPaser(uint8_t *buffer,uint8_t cmd)
        				ptag->parse((uint8_t*)p,ptag->tag_str);
        			}
        	}
+  #ifdef MODULE_4G
+  #ifdef SMS_4G_SUPPORT
 
+	if(strstr(str,"+CPMS")!=NULL)
+	{
+		p=strstr(str,"\"SM\"");
+		
+		memset(g_SmsIndex,0x00,SMS_INDEX_SIZE);
 
+		len_value=AtCmdGetValueLen(p+5,',');
+		memcpy(g_SmsIndex,p+5,len_value);
+		LogPrintf("GSM:Sms index  %s\r\n",g_SmsIndex);
+		}
+	#endif
+	#else
 	if(strstr(str,"\"SM_P\"")!=NULL)
 	{
 		p=strstr(str,"\"SM_P\"");
@@ -1606,6 +2069,7 @@ void AtCmdPaser(uint8_t *buffer,uint8_t cmd)
 		len_value=AtCmdGetValueLen(p+7,',');
 		memcpy(g_SmsIndex,p+7,len_value);
 		}
+	#endif
 
 	if(strstr(str,"+CPMS")!=NULL)
 	{
@@ -1637,11 +2101,12 @@ void AtCmdPaser(uint8_t *buffer,uint8_t cmd)
 		p+=len_value+1;
 		len_value=AtCmdGetValueLen(p,',');
 
-		memset(latbuf,0x00,16);
-		if(len_value<=16)
-		{	agps_lot=atof(p);
-			sprintf((char*)latbuf,"%f",agps_lot);
-			GattSetGpsCordLat(latbuf);
+		memset(latbuf, 0x00, 16);
+		if (len_value <= 16)
+		{
+			agps_lot = atof(p);
+			sprintf((char *)latbuf, "%f", agps_lot);
+			GattSetGpsCordLat(latbuf);  
 
 			LogPrintf("lat :%s\r\n",latbuf);
 			}
@@ -1681,9 +2146,16 @@ void AtCmdPaser(uint8_t *buffer,uint8_t cmd)
 	
 		if(p!=NULL)
 		{
-			uint8_t temp[32];
+			uint8_t temp[32],i=0,*iccid;
 			memset(temp,0x00,32);
-			memcpy(temp,p+8,20);
+			iccid=p+8;
+			for(i=0;i<20;i++)
+			{
+				if(iccid[i]>'9'||iccid[i]<'0')
+					break;
+				}
+			
+			memcpy(temp,p+8,i);
 
 			GattSetData( LIST_ATT, ATT_CCID, (uint8_t*)&temp);
 			}
@@ -1713,11 +2185,84 @@ void AtCmdPaser(uint8_t *buffer,uint8_t cmd)
 			 	OtaParse(p);
 
 				MqttSetRequest(MQTT_REQ_OTA);
-			 	}
-			#endif
-			//cmd parse
-			p=strstr(p_buf,"/cmd/nbroker/");  //"ip ,port,username,password"
-			if(p!=NULL)
+			}
+#endif
+			
+			p = strstr(p_buf, "updata");
+			if (p != NULL)
+			{
+				HAL_Delay(100);
+				p = strstr(p_buf, "//");
+				if (p != NULL)
+				{
+					len_value = AtCmdGetValueLen(p, ':');
+					memset(ftp_inf.mqttftp_usename,0,sizeof(ftp_inf.mqttftp_usename));
+					memcpy(ftp_inf.mqttftp_usename,p+2,len_value-2);
+					LogPrintf(" usename_ftp:%s \r\n", ftp_inf.mqttftp_usename);
+				}
+				
+				p1 = strstr(p, ":");
+				if (p1 != NULL)
+				{
+					len_value = AtCmdGetValueLen(p1, '@');
+					memset(ftp_inf.mqttftp_password,0,sizeof(ftp_inf.mqttftp_password));
+					memcpy(ftp_inf.mqttftp_password,p1+1,len_value-1);
+					LogPrintf(" password_ftp:%s \r\n", ftp_inf.mqttftp_password);
+				}
+				
+				p = strstr(p1, "@");
+				if (p1 != NULL)
+				{
+					len_value = AtCmdGetValueLen(p, ':');
+					memset(ftp_inf.mqttftp_broker,0,sizeof(ftp_inf.mqttftp_broker));
+					memcpy(ftp_inf.mqttftp_broker,p+1,len_value-1);
+					LogPrintf(" broker_ftp:%s \r\n", ftp_inf.mqttftp_broker);
+				}
+				p1 = strstr(p, ":");
+				if (p1 != NULL)
+				{
+					len_value = AtCmdGetValueLen(p1, '/');
+					memset(ftp_inf.mqttftp_port,0,sizeof(ftp_inf.mqttftp_port));
+					memcpy(ftp_inf.mqttftp_port,p1+1,len_value-1);
+					LogPrintf(" port_ftp:%s \r\n", ftp_inf.mqttftp_port);
+				}
+				p = strstr(p1, "/");
+				if (p1 != NULL)
+				{
+					len_value = AtCmdGetValueLen(p, '.');
+					memset(ftp_inf.mqttftp_filename,0,sizeof(ftp_inf.mqttftp_filename));
+					memcpy(ftp_inf.mqttftp_filename,p+1,len_value+4);
+					LogPrintf(" filename_ftp:%s \r\n", ftp_inf.mqttftp_filename);
+				}
+
+				//MqttSetRequest(MQTT_REQ_OTA);
+				set_ftpota_flag(1);
+			     memset(g_GsmRbuffer,0,sizeof(g_GsmRbuffer)); 
+			}
+			
+			
+			p = strstr(p_buf, "otadata");
+			if (p != NULL)
+			{
+				//HAL_Delay(100);
+				p1 = strstr(p, "/");
+				
+				if (p1 != NULL)
+				{
+					len_value = AtCmdGetValueLen(p1, '"');
+					memset(ftp_inf.mqttftp_filename,0,sizeof(ftp_inf.mqttftp_filename));
+					memcpy(ftp_inf.mqttftp_filename,p1,len_value);
+					
+				}
+				LogPrintf(" filename_ftp:  %s \r\n", ftp_inf.mqttftp_filename);
+				//MqttSetRequest(MQTT_REQ_OTA);
+				set_ftpota_flag(1);
+				memset(g_GsmRbuffer,0,sizeof(g_GsmRbuffer)); 
+			}
+			
+			// cmd parse
+			p = strstr(p_buf, "/cmd/nbroker/"); //"ip ,port,username,password"
+			if (p != NULL)
 			{
 				HAL_Delay(20);
 				p=NULL;
@@ -1820,17 +2365,18 @@ void AtCmdPaser(uint8_t *buffer,uint8_t cmd)
 			p=strstr(p_buf,"/cmd/gstw/");  //sleep
 			if(p!=NULL)
 			{
-				//g_UserSet.sleeptime=atoi(p+10);
+				g_UserSet.sleeptime=atoi(p+10);
 				AtSetTopicId(/*"/cmd/gstw"*/NULL);
 
-//				if(g_UserSet.sleeptime>720)
-//				{	g_UserSet.sleeptime=720;
-//					//GattSetUplinkData("720");
-//					}
-				//else
-					//GattSetUplinkData(p+10);
-				memset(tempBuff,0x00,128);
-			//	sprintf((char*)tempBuff,"\"gstw\":\"%d\"",g_UserSet.sleeptime);
+				if (g_UserSet.sleeptime > 720)
+				{
+					g_UserSet.sleeptime = 720;
+					// GattSetUplinkData("720");
+				}
+				// else
+				// GattSetUplinkData(p+10);
+				memset(tempBuff, 0x00, 128);
+				sprintf((char *)tempBuff, "\"gstw\":\"%d\"", g_UserSet.sleeptime);
 				GattSetCmdUplinkData(tempBuff);
 				
 				MqttSetRequest(MQTT_REQ_CMD);
@@ -1919,8 +2465,67 @@ void AtCmdPaser(uint8_t *buffer,uint8_t cmd)
 				//GattSetUplinkData(p);
 
 				EEpUpdateEnable();
-			}
+				}
 
+			p=strstr(p_buf,"/cmd/updt/"); 
+			if(p!=NULL)
+			{
+				AtSetTopicId(/*"/cmd/updt"*/ NULL);
+				memset(tempBuff, 0x00, 128);
+				if (strstr(p, "\"auto\"") != NULL)
+				{
+					g_UserSet.reportt_auto = 1;
+					// GattSetUplinkData("auto");
+					sprintf((char *)tempBuff, "\"updt\":\"%s\"", "auto");
+				}
+				else if (strstr(p, "\"manu\"") != NULL)
+				{
+					g_UserSet.reportt_auto = 0;
+					// GattSetUplinkData("manu");
+					sprintf((char *)tempBuff, "\"updt\":\"%s\"", "manu");
+				}
+				else
+				{
+					//GattSetUplinkData("error cmd");
+					sprintf((char*)tempBuff,"\"updt\":\"%s\"","error cmd");
+					}
+
+				
+				GattSetCmdUplinkData(tempBuff);
+				
+				MqttSetRequest(MQTT_REQ_CMD);
+				EEpUpdateEnable();
+				}
+			p=strstr(p_buf,"/cmd/rptm/"); 
+			if(p!=NULL)
+			{
+				AtSetTopicId(/*"/cmd/rptm"*/NULL);
+
+				memset(tempBuff,0x00,128);
+
+				if (strstr(p, "0") != NULL)
+				{
+					g_UserSet.reportt_auto = 1;
+					// GattSetUplinkData("\"mode 0\"");
+					sprintf((char *)tempBuff, "\"rptm\":\"%d\"", 0);
+				}
+				else if (strstr(p, "1") != NULL)
+				{
+					g_UserSet.reportt_auto = 0;
+					// GattSetUplinkData("\"mode 1\"");
+					sprintf((char *)tempBuff, "\"rptm\":\"%d\"", 1);
+				}
+				else
+				{
+					sprintf((char*)tempBuff,"\"rptm\":\"%s\"","error");
+					}
+				
+				
+				GattSetCmdUplinkData(tempBuff);
+				
+				MqttSetRequest(MQTT_REQ_CMD);
+				EEpUpdateEnable();
+				}
 
 			p=strstr(p_buf,"/cmd/hbfq/");  //hbfq
 			if(p!=NULL)
@@ -2073,13 +2678,15 @@ void AtCmdPaser(uint8_t *buffer,uint8_t cmd)
 					else
 						GattDtTypeFieldJsonMerge(LIST_DIA,meta);
 				 	}
-				 else if(strstr(p_buf,"\"abac")!=NULL)
-				 {
-				 	
-				 	for(i=0;i<g_UserSet.abacus_num;i++)
-				 	{
-				 		if(strstr(p_buf,g_UserSet.abacuslist[i])!=NULL)
-						{	GattAbacSetReprotIndex(i);
+				 #ifdef ABACUSLEDER_SUPPORT
+				else if (strstr(p_buf, "\"abac") != NULL)
+				{
+
+					for (i = 0; i < g_UserSet.abacus_num; i++)
+					{
+						if (strstr(p_buf, g_UserSet.abacuslist[i]) != NULL)
+						{
+							GattAbacSetReprotIndex(i);
 							break;
 				 			}
 				 		}
@@ -2089,6 +2696,15 @@ void AtCmdPaser(uint8_t *buffer,uint8_t cmd)
 				 	MqttSetRequest(MQTT_REQ_ABAC);
 					
 				 	}
+				 #endif
+				 #ifdef CHARGE_STATION
+				 else if(strstr(p_buf,"\"slot\":")!=NULL)
+				 {
+					p=strstr(p_buf,"\"slot\":");
+				 	GattSlotIndexSet(atoi(p+7));
+				 	MqttSetRequest(MQTT_REQ_SLOT_BMS);
+				 	}
+				 #endif
 									 
 				}
 			}
@@ -2247,6 +2863,8 @@ void AtCmdPaser(uint8_t *buffer,uint8_t cmd)
 				EEpUpdateEnable();
 			 	}
 
+			#ifdef ABACUSLEDER_SUPPORT
+
 			p=strstr(p_buf,"abac\":");
 			if(p!=NULL)
 			 {
@@ -2309,10 +2927,39 @@ void AtCmdPaser(uint8_t *buffer,uint8_t cmd)
 				MqttSetRequest(MQTT_REQ_CMD);
 				EEpUpdateEnable();
 			 	}
+			#endif
 			p=strstr(p_buf,"pubk\":\"");
 			if(p!=NULL)
 			 {
-			 	uint8_t len=0,pbukbuf[64];
+			 	uint8_t len=0,pbukbuf[128];
+
+				#ifdef OPEN_PAYGO
+				uint8_t tempkey[12]={0};
+				uint64_t keydata=0;
+				extern TokenData g_Output;
+				extern uint16_t TokenCount;
+				extern uint16_t UsedTokens;
+				
+				tempkey[0]=	p[8];
+				tempkey[1]=	p[9];
+				tempkey[2]=	p[10];
+				
+				tempkey[3]=	p[12];
+				tempkey[4]=	p[13];
+				tempkey[5]=	p[14];
+				
+				tempkey[6]=	p[16];
+				tempkey[7]=	p[17];
+				tempkey[8]=	p[18];
+
+				keydata=atoll(tempkey);
+				OpenPaygoSetInputToken(keydata);
+				OpenPaygoUpdateToken();
+				OpenPaygoProcess();
+
+				sprintf((char*)tempBuff,"\"pubk\":\"%ld\",\"outvalue\":\"%d\",\"outcnt\":\"%d\",\"usedtoken\":\"%d\",\"TokenCount\":\"%d\"",keydata,g_Output.Value,g_Output.Count,UsedTokens,TokenCount);
+				
+				#else
 				
 				AtCmdTokenParse((uint8_t*)p,"pubk\":\"*0");
 
@@ -2339,6 +2986,7 @@ void AtCmdPaser(uint8_t *buffer,uint8_t cmd)
 					sprintf((char*)tempBuff,"\"pubk\":\"%s\"","password use");
 				else
 					sprintf((char*)tempBuff,"\"pubk\":\"%s\"","password error");
+				#endif
 
 				GattSetCmdUplinkData(tempBuff);
 					
@@ -2350,32 +2998,110 @@ void AtCmdPaser(uint8_t *buffer,uint8_t cmd)
 			 {
 			 	tempInt16=atoi(p+6);
 
-//				if(tempInt16>0&&tempInt16<720)
-//					g_UserSet.sleeptime=tempInt16;
+				if(tempInt16>0&&tempInt16<720)
+					g_UserSet.sleeptime=tempInt16;
 
 				/*if(g_UserSet.sleeptime>720)
 				{	g_UserSet.sleeptime=720;
 					}*/
 				memset(tempBuff,0x00,128);
-//				sprintf((char*)tempBuff,"\"gstw\":%d",g_UserSet.sleeptime);
+				sprintf((char*)tempBuff,"\"gstw\":%d",g_UserSet.sleeptime);
 				GattSetCmdUplinkData(tempBuff);
 				
 				MqttSetRequest(MQTT_REQ_CMD);
 				EEpUpdateEnable();
-			}
+			 	}
 
 			p=strstr(p_buf,"gctw\":");
 			if(p!=NULL)
 			 {
 			 	
 				tempInt16=atoi(p+6);
-//				if(tempInt16>0&&tempInt16<g_UserSet.sleeptime)
-//					g_UserSet.onlinetime=tempInt16;
+				if(tempInt16>0&&tempInt16<g_UserSet.sleeptime)
+					g_UserSet.onlinetime=tempInt16;
 				
 				memset(tempBuff,0x00,128);
 				sprintf((char*)tempBuff,"\"gctw\":%d",g_UserSet.onlinetime);
 				GattSetCmdUplinkData(tempBuff);
 				
+				MqttSetRequest(MQTT_REQ_CMD);
+				EEpUpdateEnable();
+			 	}
+		p = strstr(p_buf, "tomd\":");
+		if (p != NULL)
+		{
+			tomdbuff = atof(p + 6);
+			// printf("tomdbuff111111111111111111111 = %f\n", tomdbuff);
+			if (tomdbuff > 0)
+				g_UserSet.tomd = tomdbuff;
+			memset(tempBuff, 0x00, 128);
+			sprintf((char *)tempBuff, "\"tomd\":%.1f", g_UserSet.tomd);
+			GattSetCmdUplinkData(tempBuff);
+			MqttSetRequest(MQTT_REQ_CMD);
+			EEpUpdateEnable();
+		}
+
+		
+			p = strstr(p_buf, "tmzs\":");
+			if (p != NULL)
+			{
+				temp = atoi(p + 6);
+				
+				if (temp <= 12&& temp>=-12)
+					g_UserSet.timezone = temp;
+				
+				memset(tempBuff, 0x00, 128);
+				sprintf((char *)tempBuff, "\"tmzs\":%d", g_UserSet.timezone);
+				GattSetCmdUplinkData(tempBuff);
+				MqttSetRequest(MQTT_REQ_CMD);
+				EEpUpdateEnable();
+			}
+			p = strstr(p_buf, "mxps\":");
+			if (p != NULL)
+			{
+				temp = atoi(p + 6);
+				
+				if (temp <= 200&&temp>=0)
+					g_UserSet.max_speed_limit = temp;
+				
+				memset(tempBuff, 0x00, 128);
+				sprintf((char *)tempBuff, "\"mxps\":%d", g_UserSet.max_speed_limit);
+				GattSetCmdUplinkData(tempBuff);
+				MqttSetRequest(MQTT_REQ_CMD);
+				EEpUpdateEnable();
+			}
+
+			p=strstr(p_buf,"flid\":\"");
+			if(p!=NULL)
+			 {
+				p=p+7;
+				value_len=AtCmdGetValueLen(p,'\"');
+
+				if(value_len>=MEM_SIZE_FLID)
+					value_len=MEM_SIZE_FLID;
+
+				for(i=0;i<value_len;i++)
+				{
+					if(p[i]>='a'&&p[i]<='z'||p[i]>='A'&&p[i]<='Z'||p[i]>='0'&&p[i]<='9')
+						continue;
+					else
+						break;
+					}
+
+				memset(tempBuff,0x00,128);
+				if(i==value_len)
+				{
+					memset(g_UserSet.fleed,0x00,MEM_SIZE_FLID);
+					memcpy(g_UserSet.fleed,p,value_len);
+
+					sprintf((char*)tempBuff,"\"flid\":\"%s\"",g_UserSet.fleed);
+					}
+				else
+				{
+					sprintf((char*)tempBuff,"\"flid\":\"Invalid\"");
+					}
+
+				GattSetCmdUplinkData(tempBuff);
 				MqttSetRequest(MQTT_REQ_CMD);
 				EEpUpdateEnable();
 			 	}
@@ -2417,10 +3143,10 @@ void AtCmdPaser(uint8_t *buffer,uint8_t cmd)
 			 	}
 			p=strstr(p_buf,"swch\":\"");
 			if(p!=NULL)
-			{
+			 {
 			 	memset(tempBuff,0x00,128);
 				
-				if(strstr(p,"\"on\"")!=NULL)
+				 if(strstr(p,"\"on\"")!=NULL)
 				{	
 					sprintf((char*)tempBuff,"\"swch\":\"on\"");
 					#ifdef DC_PUMP_SUPPORT
@@ -2431,7 +3157,7 @@ void AtCmdPaser(uint8_t *buffer,uint8_t cmd)
 					HAL_Delay(50);
 					PumpTxCmd(PUMP_ON);
 					#endif
-				}
+					}
 				else if(strstr(p,"\"off\"")!=NULL)
 				{	
 					sprintf((char*)tempBuff,"\"swch\":\"off\"");
@@ -2441,56 +3167,58 @@ void AtCmdPaser(uint8_t *buffer,uint8_t cmd)
 					#else
 					PumpTxCmd(PUMP_OFF);
 					#endif
-				}
+					}
 				else
 				{
 					sprintf((char*)tempBuff,"\"swch\":\"error\"");
-				}
+					}
 				GattSetUplinkData(tempBuff);
 				MqttSetRequest(MQTT_REQ_CMD);
-			}
+			 	}
 			p=strstr(p_buf,"read\":\"");
 			if(p!=NULL)
-			{
+			 {
 				memset(tempBuff,0x00,128);
+
 				memcpy(tempBuff,p,strlen(p));
+				
 			 	GattSetCmdUplinkData(tempBuff);
+				
 				MqttSetRequest(MQTT_REQ_CMD);
 				EEpUpdateEnable();
-			}
-			
-//			p=strstr(p_buf,"rptm\":");
-//			if(p!=NULL)
-//			 {
-//				memset(tempBuff,0x00,128);
-
-//				if(strstr(p,":0")!=NULL)
-//				{	g_UserSet.reportt_auto=1;
-//					sprintf((char*)tempBuff,"\"rptm\":%d",0);
-//					}
-//				else if(strstr(p,":1")!=NULL)
-//				{	g_UserSet.reportt_auto=0;
-//					sprintf((char*)tempBuff,"\"rptm\":%d",1);
-//					}
-//				else
-//				{
-//					sprintf((char*)tempBuff,"\"rptm\":\"%s\"","error");
-//					}
-//				
-//				
-//				GattSetCmdUplinkData(tempBuff);
-//				
-//				MqttSetRequest(MQTT_REQ_CMD);
-//				EEpUpdateEnable();
-//			 	}
-
-			p=strstr(p_buf,"hbfq\":");
+			 	}
+			p=strstr(p_buf,"rptm\":");
 			if(p!=NULL)
 			 {
-			 	g_UserSet.heartbeat=atoi(p+6);
 				memset(tempBuff,0x00,128);
-				sprintf((char*)tempBuff,"\"hbfq\":%d",g_UserSet.heartbeat);
-				GattSetCmdUplinkData(tempBuff);
+
+			if (strstr(p, ":0") != NULL)
+			{
+				g_UserSet.reportt_auto = 1;
+				sprintf((char *)tempBuff, "\"rptm\":%d", 0);
+			}
+			else if (strstr(p, ":1") != NULL)
+			{
+				g_UserSet.reportt_auto = 0;
+				sprintf((char *)tempBuff, "\"rptm\":%d", 1);
+			}
+			else
+			{
+				sprintf((char *)tempBuff, "\"rptm\":\"%s\"", "error");
+			}
+
+			GattSetCmdUplinkData(tempBuff);
+
+			MqttSetRequest(MQTT_REQ_CMD);
+			EEpUpdateEnable();
+		}
+		p = strstr(p_buf, "hbfq\":");
+		if (p != NULL)
+		{
+			g_UserSet.heartbeat = atoi(p + 6);
+			memset(tempBuff, 0x00, 128);
+			sprintf((char *)tempBuff, "\"hbfq\":%d", g_UserSet.heartbeat);
+			GattSetCmdUplinkData(tempBuff);
 
 				MqttSetRequest(MQTT_REQ_CMD);
 				EEpUpdateEnable();
@@ -2758,17 +3486,19 @@ void AtCmdProc(void)
 		if(g_AtAckTout_timer.retry<AT_RETRY_CNT)
 		{	
 			AtCmdMerge(g_AtCmdState);
-			TimerAtTOutStart(5000U,FALSE);
+			TimerAtTOutStart(10000U,FALSE);
 			}
 		}
+
+	#ifdef GD32F10X_MD
+	g_RxGsmCounter=/*huart2.RxXferSize-*/huart3.RxXferCount;
+	#else
 	g_RxGsmCounter=/*huart2.RxXferSize-*/huart2.RxXferCount;
+	#endif
 
 	for(i=g_RxGsmParsePos;i<g_RxGsmCounter;i++)
 	{
-		if((g_GsmRbuffer[i-1]==0x0d&&g_GsmRbuffer[i]==0x0a)&&i||g_GsmRbuffer[i]=='>'||g_GsmRbuffer[i]=='}'
-			//||g_GsmRbuffer[i-2]==MQTT_ClienID[0]&&g_GsmRbuffer[i-1]==MQTT_ClienID[1]&&g_GsmRbuffer[i]==MQTT_ClienID[2]
-			//||strstr(&g_GsmRbuffer[i],MQTT_ClienID)!=NULL
-			)
+		if ((g_GsmRbuffer[i - 1] == 0x0d && g_GsmRbuffer[i] == 0x0a) && i || g_GsmRbuffer[i] == '>' || g_GsmRbuffer[i] == '}')
 		{
 
 			HAL_Delay(10);
@@ -2803,3 +3533,40 @@ void AtCmdProc(void)
 }
 
 
+void AtCmdProc_ftp(void)
+{
+
+	uint32_t i;
+	uint8_t *p = NULL;
+ 
+	 
+	g_RxGsmCounter =   huart2.RxXferCount;
+ 
+	if(g_RxGsmCounter > 4)
+	{
+
+		for (i = g_RxGsmParsePos; i < g_RxGsmCounter; i++)
+		{
+			if ((g_GsmRbuffer[i - 1] == 0x0d && g_GsmRbuffer[i] == 0x0a) )//&& i || g_GsmRbuffer[i] == '>' || g_GsmRbuffer[i] == '}'
+			{
+
+				HAL_Delay(10);
+
+				g_RxGsmParseSize = i + 1 - g_RxGsmParsePos;
+
+	//#ifdef DEBUG_AT_LOG
+
+		 
+				LogPrintf("GSM_ftp:%s", &g_GsmRbuffer[g_RxGsmParsePos]);
+				printf("\r\n");
+	//#endif
+
+				AtCmdPaser_ftp(&g_GsmRbuffer[g_RxGsmParsePos], g_AtCmdState);
+
+				g_RxGsmParsePos = i + 1;
+				
+				memset(g_GsmRbuffer,0,sizeof(g_GsmRbuffer)); 
+			}
+		}
+   }
+}

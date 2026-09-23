@@ -4,7 +4,12 @@
 #define __CAN_H__
 
 
-#define CAN_TX_BUF_SIZE  100
+#ifdef CHARGE_STATION
+#define CHARGE_NUM  15  //15
+#else
+#define CHARGE_NUM  1
+#endif
+
 
 union BitGroup_TypeDef{
     unsigned char BYTE;
@@ -20,6 +25,42 @@ union BitGroup_TypeDef{
     }BIT;
 };
 
+enum
+{
+	MISS_ACK_NONE,
+	MISS_ACK_TIMEOUT,
+	MISS_ACK_RECOVERY
+};
+
+enum
+{
+	BUSOFF_NONE,
+	BUSOFF_QUICK,
+	BUSOFF_SLOW
+};
+
+#define BEHAVIOR_TIMEOUT	0
+
+#define TX_TIMEOUT	100
+#define TX_RECOVERY	150	
+
+#define T_BUSOFF_QUICK	100
+#define T_BUSOFF_SLOW	1000
+
+
+typedef struct
+{
+	uint8_t tx_disable;
+	uint8_t busoff_state;
+	uint8_t miss_ack_state;
+	uint8_t reserved;
+	
+	uint32_t busoff_start_timer;
+	uint32_t miss_ack_start_timer;
+	
+	uint16_t busoff_counter;
+	uint16_t reserved1;
+}CAN_RECOVERY_TypeDef;
 
 typedef struct
 {
@@ -78,8 +119,6 @@ typedef struct
 	uint8_t RtCurrentL;
 }MCU_RUNINFOR_TypeDef;
 
-
-
 typedef struct
 {
 	uint8_t RtDischargeCurtLimitH;
@@ -92,48 +131,6 @@ typedef struct
 	
 	uint8_t reseved1[3];
 }MCU_POWEROUT_TypeDef;
-
-
-typedef struct
-{
-	uint8_t chargeVolLimitH;
-	uint8_t chargeVolLimitL;
-	uint8_t chargeCurtLimitH;
-	uint8_t chargeCurtLimitL;
-	
-	 
-	
-	uint8_t reseved1[4];
-}BMSCCS_TypeDef;
-
-typedef struct
-{
-	uint8_t chargeVolLimitH;
-	uint8_t chargeVolLimitL;
-	uint8_t chargeCurtLimitH;
-	uint8_t chargeCurtLimitL;
-	uint8_t resed;
-	 
-	
-	uint8_t reseved1[3];
-}MCUCCS_TypeDef;
-
-
-typedef struct
-{
-	uint8_t chargeVolLimitH;
-	uint8_t chargeVolLimitL;
-	uint8_t chargeCurtLimitH;
-	uint8_t chargeCurtLimitL;
-	uint8_t reseved1[4];
-}MCUCCS_VCUAP_TypeDef;
-
-typedef struct
-{
-	uint8_t DevidH[8];
-	uint8_t DevidL[8];
-	
-}HM7280_CCS_DEVID_TypeDef;
 
 typedef struct
 {
@@ -177,7 +174,17 @@ typedef struct
 
 typedef struct
 {
-/*
+	uint8_t TargetChargeVoltageH;
+	uint8_t TargetChargeVoltageL;
+	uint8_t TargetChargeCurrentH;
+	uint8_t TargetChargeCurrentL;
+	uint8_t ChargeEnable;
+	uint8_t Reserved[3];
+}HM7280_IOT_CHARGE_CMD_TypeDef;
+
+typedef struct
+{
+
 	uint8_t PackOpenload:1;
 	uint8_t DischrgShortLoad:1;
 	uint8_t ChrgOverTempProtect:1;
@@ -197,13 +204,13 @@ typedef struct
 	uint8_t DischrgOverCurrentProtect:1;
 	uint8_t DischrgOverTempProtect:1;
 	uint8_t DischrgLowTempProtect:1;
-	*/
+	
 
-	uint8_t temp1;
-	uint8_t temp2;
+	uint8_t RealtimeCurrentH;
+	uint8_t RealtimeCurrentL;
 
-	uint8_t acinputh;
-	uint8_t acinputl;
+	uint8_t RealtimeVoltageH;
+	uint8_t RealtimeVoltageL;
 
 	uint8_t PackMaxTemp;
 	uint8_t PackMinTemp;
@@ -377,35 +384,98 @@ typedef struct
    //mV
 	uint8_t RatedCapH;
 	uint8_t RatedCapL;
-	uint8_t Reserved1[2];
 
 	uint8_t RatedVoltageH;
 	uint8_t RatedVoltageL;
 
-	uint8_t Reserved[2];
+	uint8_t Reserved[4];
 
 }BMS_SYSINFOR_TypeDef;
 
 typedef struct
 {
-	uint8_t WatchdogEnable:1;
-	uint8_t reserved:7;
+	uint8_t TargetAPVoltageH;
+	uint8_t TargetAPVoltageL;
+	uint8_t TargetAPCurrentH;
+	uint8_t TargetAPCurrentL;
+	uint8_t number;
+	uint8_t Reserved[3];
+}BMS_SYSINAP_TypeDef;
 
-	uint8_t Reserved1[7];
-
-}VCU_WDG_TypeDef;
 
 typedef struct
 {
-	uint8_t Heartbeat:1;
+	uint8_t WatchdogEnable:1;
+	uint8_t reserved0:7;
+	
+	uint8_t MCUStopSet:1;
+	uint8_t reserved1:7;
+	
+	uint8_t BmsWatchdogEnable:1;
+	uint8_t reserved2:7;
+	
+	uint8_t Reserved1[5];
+
+}VCU_WDG_TypeDef; //0x00632
+
+typedef struct
+{
+   //mV
+	uint8_t index;
+	uint8_t size;
+
+	uint8_t serialNo[6];
+
+}BMS_SN_TypeDef;
+
+
+typedef struct
+{
+	#ifdef OLD_CAN_VERSION
+	
+	uint8_t Wdgrefresh:1;
 	uint8_t reserved:7;
 
-	uint8_t Wdgrefresh:1;
+	uint8_t Heartbeat:1;
 	uint8_t reserved1:7;
 
-	uint8_t Reserved2[6];
+	uint8_t WdgCounter;//RESERVED
+
+	uint8_t Reserved2[5];
+	#else
+	uint8_t Heartbeat:1;
+	uint8_t reserved1:7;
+
+	uint8_t Wdgrefresh:1;
+	uint8_t reserved:7;
+
+	uint8_t WdgCounter;//RESERVED
+
+	uint8_t Reserved2[5];
+	#endif
 }VCU_WDG_REFRESH_TypeDef;
 
+typedef struct
+{
+	uint8_t module_infor;
+	uint8_t fault;
+	uint8_t hour;
+	uint8_t min;
+
+	uint8_t voltage_level;
+	uint8_t gps_speed;
+	uint8_t gsm_rssi;
+	uint8_t gps_star_num;
+}MCU_RTC_TypeDef;
+
+
+typedef struct
+{
+	uint8_t PowerLimit; //1%---100%
+	uint8_t SpeedLimit; //1km/h---200km/h
+
+	uint8_t Reserved2[6];
+}VCU_LIMIT_TypeDef; //0x00634
 
 
 
@@ -419,82 +489,28 @@ typedef struct
 {
 	uint8_t canTx_Pc_en;
 	uint8_t canTx_busy;
-	uint8_t can0_count;
-	uint8_t can1_count;
+	uint16_t reserved;
 	
 	uint32_t t100ms;
 	uint32_t t200ms;
 	
 	uint32_t t1000ms;
 	uint32_t t2000ms;
-uint32_t bmscandowntime;
-	uint32_t vcucandowntime;
+
 	uint32_t t5000ms;
-	uint32_t t10ms;
+
+	uint32_t t500ms;
 }CAN_TXSTATE_TypeDef;
 
 
-typedef struct
-{
 
-	uint16_t reserved;
-
-	uint16_t ms:4;
-	uint16_t msg_addr:4;
-	uint16_t ver:4;
-	uint16_t reserved1:4;
-}CAN_ID_TypeDef;
-
-//buss fault process
-
-#define BEHAVIOR_TIMEOUT	0
-
-#define TX_TIMEOUT	100
-#define TX_RECOVERY	150	
-
-#define T_BUSOFF_QUICK	100
-#define T_BUSOFF_SLOW	1000
-
-
-typedef struct
-{
-	uint8_t tx_disable;
-	uint8_t busoff_state;
-	uint8_t miss_ack_state;
-	uint8_t reserved;
-	
-	uint32_t busoff_start_timer;
-	uint32_t miss_ack_start_timer;
-	
-	uint16_t busoff_counter;
-	uint16_t reserved1;
-}CAN_RECOVERY_TypeDef;
-
-enum
-{
-	MISS_ACK_NONE,
-	MISS_ACK_TIMEOUT,
-	MISS_ACK_RECOVERY
-};
-
-enum
-{
-	BUSOFF_NONE,
-	BUSOFF_QUICK,
-	BUSOFF_SLOW
-};
-
-
-
-#define McuFaultEvent     g_CanMcuEvent.BIT.B0
+#define McuFaultEvent        g_CanMcuEvent.BIT.B0
 #define McuRunInforEvent     g_CanMcuEvent.BIT.B1
-#define McuPwrOutEvent     g_CanMcuEvent.BIT.B2
+#define McuPwrOutEvent       g_CanMcuEvent.BIT.B2
 #define McuSysInfor1Event     g_CanMcuEvent.BIT.B3
 #define McuSysInfor2Event     g_CanMcuEvent.BIT.B4
-#define McuCCSEvent     g_CanMcuEvent.BIT.B5
-#define BmsRtState1Event	g_CanMcuEvent.BIT.B6
 
-#define BmsRtChangEvent      g_CanBmsEvent.BIT.B0
+#define BmsRtState1Event     g_CanBmsEvent.BIT.B0
 #define BmsRtState2Event     g_CanBmsEvent.BIT.B1
 #define BmsRtState3Event     g_CanBmsEvent.BIT.B2
 #define BmsCellVolt1Event    g_CanBmsEvent.BIT.B3
@@ -504,8 +520,9 @@ enum
 #define BmsCellVolt5Event    g_CanBmsEvent.BIT.B7
 
 #define BmsCellVolt6Event    g_CanBms1Event.BIT.B0
-#define BmsRtTempEvent    g_CanBms1Event.BIT.B1
+#define BmsRtTempEvent      g_CanBms1Event.BIT.B1
 #define BmsSysInforEvent    g_CanBms1Event.BIT.B2
+#define BmsSerialNoEvent    g_CanBms1Event.BIT.B3
 
 
 
@@ -515,17 +532,8 @@ void CanProc(void);
 void CanBmsParse(uint32_t id,uint8_t *data,uint8_t len);
 void CanMcuParse(uint32_t id,uint8_t *data,uint8_t len);
 void CanTransmit(uint32_t id,uint8_t *data,uint8_t len);
-void CanBmsParse_bms(uint32_t id,uint8_t *data,uint8_t len); //bms
-uint32_t get_bat_rcap_mWh(void);
-void set_CcsEnergy_mWh(uint32_t value);
-uint8_t stop_changestaate(void);
-#ifdef CAN_TRASMITER_SUPPORT
-void Can0RxProc(can_receive_message_struct* rx_message);
-void Can1RxProc(can_receive_message_struct* rx_message);
+void CanTransmitStd(uint32_t id,uint8_t *data,uint8_t len);
 
-void Can0Transmit(can_trasnmit_message_struct *transmit_message);
-void Can1Transmit(can_trasnmit_message_struct *transmit_message);
-#endif
 #endif
 
 

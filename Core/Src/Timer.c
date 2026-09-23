@@ -25,13 +25,17 @@ TIMER_TypeDef g_DemoTimer;
 TIMER_TypeDef g_GpsSampleTimer;
 TIMER_TypeDef g_RamLReprotTimer;
 TIMER_TypeDef g_AbacSampleTimer;
+TIMER_TypeDef g_OtaExitTimer;
 
+TIMER_TypeDef g_MileageTimer;
 
 __IO uint32_t uwTick;
 
 extern uint8_t g_KeyboardDetectLockRst;
 
-
+//extern void EEpSetTomd(double tomd);
+//extern double EEpGetTomd(void);
+extern USER_SET_TypeDef g_UserSet;
 const TIMER_LIST_TypeDef g_Timer[]=
 {
 	{TIMER_UPLOAD,COUNT_SUB,&g_GprsUpload_timer,TimerGprsUploadCallback},
@@ -56,6 +60,10 @@ const TIMER_LIST_TypeDef g_Timer[]=
 	{TIMER_GPS_SAMPLE,COUNT_SUB,&g_GpsSampleTimer, NULL},
 	{TIMER_RAML_REPROT,COUNT_SUB,&g_RamLReprotTimer, TimeRamlReportCallback},
 	{TIMER_ABAC_SAMPLE,COUNT_SUB,&g_AbacSampleTimer, TimeAbacSampleCallback},
+	{TIMER_OTA_EXIT,COUNT_SUB,&g_OtaExitTimer, NULL},
+	#ifdef MILEAGE_RECORD_SUPPORT
+	{TIMER_MILEAGE, COUNT_SUB, &g_MileageTimer, TimeWriteMileageCallback},
+	#endif	
 };
 
 uint32_t HAL_GetTick(void)
@@ -98,7 +106,7 @@ void HAL_SYSTICK_Callback(void)
 			{
 				g_Timer[i].p->event=TRUE;
 
-				if(g_Timer[i].p->period==FALSE)	
+				if(g_Timer[i].p->period==FALSE)
 					g_Timer[i].p->enable=FALSE;
 				
 				if(g_Timer[i].callback!=NULL)
@@ -125,7 +133,7 @@ void TimerInit(void)
 {
 	g_GprsUpload_timer.enable=TRUE;
 	g_GprsUpload_timer.period=TRUE;
-	#if defined(UI1K_V13_PROJECT)||defined(E_MOB48V_PROJECT)||defined(P10KW_PROJECT)
+	#if defined(UI1K_V13_PROJECT)||defined(E_MOB48V_PROJECT)||defined(P10KW_PROJECT)||defined(CHARGE_STATION)
 	g_GprsUpload_timer.count=EEpGetSleepTime();
 	#else
 	g_GprsUpload_timer.count=GPRS_UPLOAD_PRIOD;
@@ -167,7 +175,7 @@ void TimerInit(void)
 	g_SleepTimer.enable=TRUE;
 	g_SleepTimer.period=FALSE;
 	
-	g_SleepTimer.count=SLEEP_PRIOD;//EEpGetOnlineTime();
+	g_SleepTimer.count=EEpGetOnlineTime();
 	
 	g_SleepTimer.event=FALSE;
 
@@ -227,8 +235,19 @@ void TimerInit(void)
 	g_AbacSampleTimer.count=1000u;
 	g_AbacSampleTimer.event=FALSE;
 
+	g_OtaExitTimer.enable=FALSE;
+	g_OtaExitTimer.period=FALSE;
+	g_OtaExitTimer.count=300000u;
+	g_OtaExitTimer.event=FALSE;
 	
-
+	g_MileageTimer.enable = TRUE;
+	g_MileageTimer.period = TRUE;
+	#ifdef SIF
+	g_MileageTimer.count = 205u;
+#else
+	g_MileageTimer.count = 180u;
+#endif
+	g_MileageTimer.event = FALSE;
 }
 
 
@@ -373,7 +392,7 @@ void TimerKbPwrHoldSet(uint32_t delay)
 
 void TimerGprsUploadCallback(TIMER_TypeDef *p)
 {
-	#if defined(UI1K_V13_PROJECT)||defined(E_MOB48V_PROJECT)||defined(P10KW_PROJECT)
+	#if defined(UI1K_V13_PROJECT)||defined(E_MOB48V_PROJECT)||defined(P10KW_PROJECT)||defined(CHARGE_STATION)
 	p->count=EEpGetSleepTime();
 	#else
 	p->count=GPRS_UPLOAD_PRIOD;
@@ -394,7 +413,10 @@ void TimerCampCallback(TIMER_TypeDef *p)
 {
 	p->count=100;
 	CampGetEnable();
-
+	#ifdef SUPERPOWER_PROJECT
+	p->count=1000;
+	superPowerGetEnable();
+	#endif
 }
 
 void TimerPumpCallback(TIMER_TypeDef *p)
@@ -409,9 +431,15 @@ void TimerPumpCallback(TIMER_TypeDef *p)
 	AdcDetectEnable();
 	#endif
 	#ifdef BLE_ENABLE
-	p->count=100;
+	#ifdef E_MOB48V_PROJECT_BAT
+	p->count=200;
+	#else
+	p->count=120;
+	#endif
 	BleComEnable();
 	#endif
+
+	PlcComEnable();
 }
 
 void TimerPaygCallback(TIMER_TypeDef *p)
@@ -441,7 +469,7 @@ void TimeBacklightCallback(TIMER_TypeDef *p)
 {
 	p->enable=FALSE;
 	#ifndef DC_PUMP_SUPPORT
-//	HAL_GPIO_WritePin(BL_CTRL_GPIO_Port, BL_CTRL_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(BL_CTRL_GPIO_Port, BL_CTRL_Pin, GPIO_PIN_RESET);
 	#endif
 
 	MenuSaverSet(TRUE);
@@ -458,7 +486,7 @@ void TimeSaverCallback(TIMER_TypeDef *p)
 }
 void TimeKbPwrHoldCallback(TIMER_TypeDef *p)
 {
-//	KeyboardUsbPwrSet(FALSE);
+	KeyboardUsbPwrSet(FALSE);
 	//g_KeyboardInsertLock=FALSE;
 	g_KeyboardDetectLockRst=FALSE;
 }
@@ -483,7 +511,7 @@ void TimeRamlReportCallback(TIMER_TypeDef *p)
 {
 	p->count=EEpGetRamLRptTime();
 
-	if(GmsNetConnectState()&&EEpGetRamLRptNum()>0)
+	if(GmsNetConnectState()&&EEpGetRamLRptNum()>0&&MqttGetRequest()==MQTT_REQ_NONE)
 		MqttSetRequest(MQTT_REQ_RAML);
 }
 
@@ -510,7 +538,7 @@ void TimeBacklightSet(void)
 	g_Backlight_timer.count=30000;
 	#else
 	g_Backlight_timer.count=60000;
-//	HAL_GPIO_WritePin(BL_CTRL_GPIO_Port, BL_CTRL_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(BL_CTRL_GPIO_Port, BL_CTRL_Pin, GPIO_PIN_SET);
 	#endif
 	MenuSaverSet(FALSE);
 
@@ -518,11 +546,11 @@ void TimeBacklightSet(void)
 
 void TimerKeyScan(TIMER_TypeDef *p)
 {
-//   if(p->enable&&IsKeyEvent())
-//	{
-//	     if(p->count<0xffff)
-//	          p->count++;
-//    	}
+   if(p->enable&&IsKeyEvent())
+	{
+	     if(p->count<0xffff)
+	          p->count++;
+    	}
 }
 
 uint8_t  TimerSleepState(void)
@@ -552,7 +580,8 @@ void  TimerSleepSet(void)
 void  TimerSet(uint8_t timer,uint32_t count)
 {
 	uint8_t i=0;
-  for(i=0;i<TIMER_COUNT;i++)
+	
+    for(i=0;i<TIMER_COUNT;i++)
 	{	
 		if(g_Timer[i].timer_id==timer)
 		{
@@ -561,8 +590,9 @@ void  TimerSet(uint8_t timer,uint32_t count)
 			g_Timer[i].p->event=FALSE;
 
 			break;
-		}
-   }
+			}
+        }
+
 }
 
 void  TimerEventClear(uint8_t timer)
@@ -595,7 +625,123 @@ uint8_t  TimerGetEventState(uint8_t timer)
 }
 
 
+void TimeWriteMileageCallback(TIMER_TypeDef *p)
+{
 
+//	uint16_t Speed_temp;
+//	double Tomd_temp;
+//	uint8_t T_temp[32] = {0};
 
+#ifdef SIF
+	p->count = 205;
+#else
+	p->count = 180;
+#endif
+/*	GattGetData(LIST_DTA, DTA_MTRD, (uint8_t *)&Speed_temp);
+	Mileage += Speed_temp * conversionFactor;
+	To_mileage += Speed_temp * conversionFactor;
+	//	memset(T_temp, 0, 32);
+	snprintf((char *)T_temp, sizeof(T_temp), "%.1f", Mileage);
+	GattSetData(LIST_DTA, DTA_CUMD, T_temp);
+	// memset(T_temp, 0, 32);
+	if (Speed_temp == 0)
+	{
+		if (stateFlag == TRUE)
+		{
+			Tomd_temp = EEpGetTomd();
+			To_mileage += Tomd_temp;
+			EEpSetTomd(To_mileage);
+			To_mileage = 0;
+			stateFlag = FALSE;
+		}
+	}
+	else
+	{
+		stateFlag = TRUE;
+	}
+	if (gpio_input_bit_get(GPIOC, GPIO_PIN_2) == 0)
+	{
+		Mileage = 0;
+	}
+	Tomd_temp = EEpGetTomd();
+	snprintf((char *)T_temp, sizeof(T_temp), "%.1f", Tomd_temp);
+	GattSetData(LIST_DTA, DTA_TOMD, T_temp);
+	GattSetData(LIST_CMD, CMD_RTMD, T_temp);*/
+} 
+#if 0//def MILEAGE_RECORD_SUPPORT
 
+void CalculateMileage(uint16_t Speed_temp)
+{
+	Mileage += Speed_temp * conversionFactor;
+	To_mileage += Speed_temp * conversionFactor;
+}
+
+void UpdateTOMileageData()
+{
+	double Tomd_temp;
+	uint8_t T_temp[32] = {0};
+	Tomd_temp = EEpGetTomd();
+	snprintf((char *)T_temp, sizeof(T_temp), "%.1f", Tomd_temp);
+	// GattSetData(LIST_DTA, DTA_CUMD, T_temp);
+	GattSetData(LIST_DTA, DTA_TOMD, T_temp);
+	GattSetData(LIST_CMD, CMD_RTMD, T_temp);
+}
+
+void UpdateMileageData(double mileage)
+{
+	uint8_t T_temp[32] = {0};
+	snprintf((char *)T_temp, sizeof(T_temp), "%.1f", mileage);
+	GattSetData(LIST_DTA, DTA_CUMD, T_temp);
+}
+
+void HandleEEPROM(uint16_t Speed_temp)
+{
+	double Tomd_temp;
+
+	if (Speed_temp == 0)
+	{
+		if (stateFlag == TRUE)
+		{
+			Tomd_temp = EEpGetTomd();
+			To_mileage += Tomd_temp;
+			EEpSetTomd(To_mileage);
+			To_mileage = 0;
+			stateFlag = FALSE;
+		}
+	}
+	else
+	{
+		stateFlag = TRUE;
+	}
+}
+
+void TimeWriteMileageCallback(TIMER_TypeDef *p)
+{
+	uint16_t Speed_temp;
+
+#ifdef SIF
+	p->count = 205;
+#else
+	p->count = 105;
+#endif
+
+	// 获取速度数据
+	GattGetData(LIST_DTA, DTA_MTRD, (uint8_t *)&Speed_temp);
+
+	// 计算里程
+	CalculateMileage(Speed_temp);
+	// 更新当次里程数据
+	UpdateMileageData(Mileage);
+	// 处理EEPROM访问
+	HandleEEPROM(Speed_temp);
+
+	// 检查里程重置条�?
+	if (gpio_input_bit_get(GPIOC, GPIO_PIN_2) == 0)
+	{
+		Mileage = 0;
+	}
+	// 更新总里�?
+	UpdateTOMileageData();
+}
+#endif
 

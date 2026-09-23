@@ -14,11 +14,12 @@ uint16_t g_bleRptPause=0;
 __IO uint8_t g_Uart1Buf[UART1_RX_BUF_SIZE];
 
 
-extern UART_HandleTypeDef huart2;
+extern UART_HandleTypeDef huart1;
 extern uint8_t g_GattMem[MEM_GATT_SIZE];
 extern uint8_t g_tokenState;
 
 extern USER_SET_TypeDef g_UserSet;
+extern GATT_UPDATE_TypeDef g_GattListUpdateState;
 
 void BleComEnable(void)
 {
@@ -27,9 +28,9 @@ void BleComEnable(void)
 }
 void BleUartInit(void)
 {
-    huart2.RxXferCount=0;
-	huart2.RxXferSize=UART1_RX_BUF_SIZE;
-    huart2.pRxBuffPtr=(uint8_t*)g_Uart1Buf; 
+    huart1.RxXferCount=0;
+	huart1.RxXferSize=UART1_RX_BUF_SIZE;
+    huart1.pRxBuffPtr=(uint8_t*)g_Uart1Buf; 
 
 }
 
@@ -163,13 +164,13 @@ void BleDataCheck(void)
 
 			GattSetUpdateState(g_bleReport_Counter,FALSE);
 			
-//			for(i=0;i<BLE_COM_COUNT-1;i++)
-//			{
-//				if(GattGetUpdateState(i))
-//				{	g_bleReport_Counter=i;
-//					break;
-//					}
-//				}
+			/*for(i=0;i<BLE_COM_COUNT-1;i++)
+			{
+				if(GattGetUpdateState(i))
+				{	g_bleReport_Counter=i;
+					break;
+					}
+				}*/
 			}
 		 // if(i==BLE_COM_COUNT-1)
 		  	g_bleReport_Counter++;
@@ -177,6 +178,9 @@ void BleDataCheck(void)
 		#ifdef P10KW_PROJECT
 		if(g_bleReport_Counter>BLE_DIA_PCCR)
 			g_bleReport_Counter=BLE_ATT_OPID;
+		#elif defined(CHARGE_STATION)	
+			if(g_bleReport_Counter>BLE_DIA_PCKC)
+				g_bleReport_Counter=BLE_ATT_OPID;
 		#else
 			#ifdef BMS_JBD_SUPPROT
 			if(g_bleReport_Counter>BLE_DIA_CV20)
@@ -255,7 +259,7 @@ void BleDataReprot(uint8_t cmd )
 			break;
 		case BLE_CMD_SWCH:
 			ack=TRUE;
-			memcpy(buffer,(uint8_t*)&g_GattMem[MEM_ADDR_SWCH],MEM_SIZE_SWCH);
+			memcpy(buffer,(uint8_t*)&g_GattMem[MEM_ADDR_GCTW],MEM_SIZE_GCTW);
 			size=MEM_SIZE_SWCH;
 			break;
 		case BLE_CMD_READ:
@@ -272,15 +276,30 @@ void BleDataReprot(uint8_t cmd )
 			ack=TRUE;
 			memcpy(buffer,(uint8_t*)&g_GattMem[MEM_ADDR_RAML],MEM_SIZE_RAML);
 			size=MEM_SIZE_RAML;
-			break;	
+		break;
+		 #ifdef MILEAGE_RECORD_SUPPORT	
+		case BLE_CMD_RTMD:
+			ack = TRUE;
+			memcpy(buffer, (uint8_t *)&g_GattMem[MEM_ADDR_RTMD], MEM_SIZE_RTMD);
+			size = MEM_SIZE_RTMD;
+			break;
+		 #endif
+		 #ifdef TIME_ZONE_SET
+		 case BLE_CMD_TMZS:
+			ack = TRUE;
+			memcpy(buffer, (uint8_t *)&g_GattMem[MEM_ADDR_TMZS], MEM_SIZE_TMZS);
+			size = MEM_SIZE_TMZS;
+			break;
+		 case BLE_CMD_MXPS:
+			ack = TRUE;
+			//memcpy(buffer, (uint8_t *)&g_GattMem[MEM_ADDR_MXPS], MEM_SIZE_MXPS);
+		 	memset(buffer,0x00,MEM_SIZE_MXPS);//not use
+			size = MEM_SIZE_MXPS;
+			break;
+		 #endif
 		case BLE_CMD_HBFQ:
 			ack=TRUE;
 			memcpy(buffer,(uint8_t*)&g_GattMem[MEM_ADDR_HBFQ],MEM_SIZE_HBFQ);
-			size=MEM_SIZE_HBFQ;
-			break;	
-		case BLE_CMD_ADDR:
-			ack=TRUE;
-			memcpy(buffer,(uint8_t*)&g_GattMem[MEM_ADDR_ADDR],MEM_SIZE_HBFQ);
 			size=MEM_SIZE_HBFQ;
 			break;	
 		#ifdef P10KW_PROJECT	
@@ -495,12 +514,13 @@ void BleDataReprot(uint8_t cmd )
 			memcpy(buffer,(uint8_t*)&g_GattMem[MEM_ADDR_OCST],MEM_SIZE_OCST);
 			size=MEM_SIZE_OCST;
 			break;
+		#ifndef CHARGE_STATION
 		case BLE_DTA_BATP:
 			ack=TRUE;
 			memcpy(buffer,(uint8_t*)&g_GattMem[MEM_ADDR_BATP],MEM_SIZE_BATP);
 			size=MEM_SIZE_BATP;
 			break;
-
+		#endif
 		#ifdef P10KW_PROJECT
 		/*case BLE_DTA_BATP:
 			ack=TRUE;
@@ -864,6 +884,7 @@ void BleDataReprot(uint8_t cmd )
 			memcpy(buffer,(uint8_t*)&g_GattMem[MEM_ADDR_PCCR],MEM_SIZE_PCCR);
 			size=MEM_SIZE_PCCR;
 			break;
+		#elif defined(CHARGE_STATION)	
 		#else
 		case BLE_DTA_INPP:
 			ack=TRUE;
@@ -969,6 +990,7 @@ void BleDataReprot(uint8_t cmd )
 			memcpy(buffer,(uint8_t*)&g_GattMem[MEM_ADDR_DMOS],MEM_SIZE_DMOS);
 			size=MEM_SIZE_DMOS;
 			break;	
+		#ifndef E_MOB48V_PROJECT_BAT	
 		case BLE_DTA_CTMP:
 			ack=TRUE;
 			memcpy(buffer,(uint8_t*)&g_GattMem[MEM_ADDR_CTMP],MEM_SIZE_CTMP);
@@ -1014,6 +1036,19 @@ void BleDataReprot(uint8_t cmd )
 			memcpy(buffer,(uint8_t*)&g_GattMem[MEM_ADDR_CMXC],MEM_SIZE_CMXC);
 			size=MEM_SIZE_CMXC;
 			break;	
+		#ifdef MILEAGE_RECORD_SUPPORT		
+		case BLE_DTA_TOMD:
+			ack = TRUE;
+			memcpy(buffer, (uint8_t *)&g_GattMem[MEM_ADDR_TOMD], MEM_SIZE_TOMD);
+			size = MEM_SIZE_TOMD;
+			break;
+		case BLE_DTA_CUMD:
+			ack = TRUE;
+			memcpy(buffer, (uint8_t *)&g_GattMem[MEM_ADDR_CUMD], MEM_SIZE_CUMD);
+			size = MEM_SIZE_CUMD;
+			break;
+		#endif
+		#endif
 		#endif
 		/*case BLE_DTA_ACYC:
 			ack=TRUE;
@@ -1219,17 +1254,13 @@ void BleCmdProc(void)
 	uint8_t ack=FALSE,i=0;
 	uint16_t temp16=0;
 	uint8_t *uartbuff=(uint8_t*)g_Uart1Buf;
-
+	uint8_t temp[32];
+	memset(temp, 0x00, 32);
 	memset(buffer,0x00,32);
 
 	#ifdef BLE_ENABLE
-
 	BleDataCheck();
-	g_GattMem[MEM_ADDR_ADDR] = g_UserSet.canid_cnt;
-	g_GattMem[MEM_ADDR_ADDR+1] = g_UserSet.canid_cnt>>8;
-	
-	g_GattMem[MEM_ADDR_RPTM] =g_UserSet.reportt_auto;
-	
+
 	if(BlePacktParse(uartbuff,buffer,&ret_len))
 	{
 		#ifdef BLE_MASTER_ENABLE
@@ -1273,7 +1304,7 @@ void BleCmdProc(void)
 					memcpy((uint8_t*)&g_GattMem[MEM_ADDR_READ],buffer,MEM_SIZE_READ);
 					break;
 				case BLE_CMD_RPTM:
-					memcpy((uint8_t*)&g_GattMem[MEM_ADDR_RPTM],buffer,MEM_SIZE_RPTM);
+					//memcpy((uint8_t*)&g_GattMem[MEM_ADDR_RPTM],buffer,MEM_SIZE_RPTM);
 					break;
 				case BLE_CMD_HBFQ:
 					//memcpy((uint8_t*)&g_GattMem[MEM_ADDR_HBFQ],buffer,MEM_SIZE_HBFQ);
@@ -1809,14 +1840,14 @@ void BleCmdProc(void)
 						{	
 							sprintf((char*)token,"/cmd/code/\"%s\"",buffer);
 							AtCmdTokenParse(token,"/cmd/code/\"*0");
-						}
+							}
 						
 						if( g_tokenState==TOKEN_OK)
 							memcpy((uint8_t*)&g_GattMem[MEM_ADDR_PUBK],buffer,MEM_SIZE_PUBK);
-//						else if( g_tokenState==TOKEN_USEED)
-//							;
-//						else
-//							;
+						else if( g_tokenState==TOKEN_USEED)
+							;
+						else
+							;
 
 						g_GattMem[MEM_ADDR_TKRE]=g_tokenState;
 
@@ -1829,78 +1860,82 @@ void BleCmdProc(void)
 						break;
 					case BLE_CMD_GSTW:	
 						memcpy((uint8_t*)&g_GattMem[MEM_ADDR_GSTW],buffer,MEM_SIZE_GSTW);
+
+						if(temp16>720)
+				 	    	temp16=720;
 						
 						GattGetData( LIST_CMD, CMD_GSTW, (uint8_t*)&temp16);
-// 					    g_UserSet.sleeptime=temp16;
+						printf("gstw time = %d\n", temp16);
+					    g_UserSet.sleeptime=temp16;
 					    EEpUpdateEnable();
 						break;
 					case BLE_CMD_GCTW:
-							memcpy((uint8_t*)&g_GattMem[MEM_ADDR_GCTW],buffer,MEM_SIZE_GCTW);
-							GattGetData( LIST_CMD, CMD_GCTW, (uint8_t*)&temp16);
-							g_UserSet.onlinetime=temp16;
-							if(g_UserSet.onlinetime == 0)
-							{
-								stop_changestaate();
-							}
+						memcpy((uint8_t*)&g_GattMem[MEM_ADDR_GCTW],buffer,MEM_SIZE_GCTW);
+						GattGetData( LIST_CMD, CMD_GCTW, (uint8_t*)&temp16);
+						printf("sleep time = %d\n", temp16);
+					    g_UserSet.onlinetime=temp16;
 					    EEpUpdateEnable();
 						break;
 					case BLE_CMD_NAPN:
 						memcpy((uint8_t*)&g_GattMem[MEM_ADDR_NAPN],buffer,MEM_SIZE_NAPN);
+						memset((uint8_t*)&g_UserSet.NetInfor.apn,0x00,APN_LEN);
 						GattGetData( LIST_CMD, CMD_NAPN, (uint8_t*)&g_UserSet.NetInfor.apn);
 						EEpUpdateEnable();
 						break;
-					
 					case BLE_CMD_SWCH:
-					//	if(get_changestaate()== 1)
-						{
-							memcpy((uint8_t*)&g_GattMem[MEM_ADDR_SWCH],buffer,MEM_SIZE_SWCH);
-							GattGetData( LIST_CMD, CMD_SWCH, (uint8_t*)&temp16);
-							g_UserSet.time=temp16;
-							set_CcsEnergyLimittime(HAL_GetTick());
-							printf("temp time= %d\n", g_UserSet.time);
-							EEpUpdateEnable();
-						}
-					break;
-					
+						memcpy((uint8_t*)&g_GattMem[MEM_ADDR_GCTW],buffer,MEM_SIZE_GCTW);
+						memset((uint8_t*)&g_GattListUpdateState,0xFF,sizeof(GATT_UPDATE_TypeDef));
+						break;
 					case BLE_CMD_READ:
 						memcpy((uint8_t*)&g_GattMem[MEM_ADDR_READ],buffer,MEM_SIZE_READ);
 						break;
-					
 					case BLE_CMD_RPTM:
 						memcpy((uint8_t*)&g_GattMem[MEM_ADDR_RPTM],buffer,MEM_SIZE_RPTM);
 						GattGetData( LIST_CMD, CMD_RPTM, (uint8_t*)&temp16);
 					    g_UserSet.reportt_auto=temp16;
-					if(g_UserSet.reportt_auto >1) g_UserSet.reportt_auto =1;
-						printf("reportt_auto swch= %d\n", g_UserSet.reportt_auto);
 					    EEpUpdateEnable();
 						break;
-					
-						case BLE_CMD_RAML:
-						//if(get_changestaate()== 1)
-						{
-						 memcpy((uint8_t*)&g_GattMem[MEM_ADDR_RAML],buffer,MEM_SIZE_RAML);
-						 GattGetData( LIST_CMD, CMD_RAML, (uint8_t*)&temp16);
-						 g_UserSet.lowbat = temp16;
-						 set_CcsEnergy_mWh(get_bat_rcap_mWh());
-						 printf("temp power= %d\n", g_UserSet.lowbat);
-					    EEpUpdateEnable();
-						}
-						break;	
-						case BLE_CMD_HBFQ:
+					case BLE_CMD_RAML:
+						AtCmdRamlParse(buffer,FALSE);
+						//memcpy((uint8_t*)&g_GattMem[MEM_ADDR_RAML],buffer,MEM_SIZE_RAML);
+						//GattGetData( LIST_CMD, CMD_RAML, (uint8_t*)&temp16);
+					    //g_UserSet.reportt_auto=temp16;
+					    //EEpUpdateEnable();
+					break;
+					#ifdef MILEAGE_RECORD_SUPPORT
+					case BLE_CMD_RTMD:
+
+						printf("buffer = %s\n", buffer);
+						printf("temp = %s\n", temp);
+						memcpy((uint8_t *)&g_GattMem[MEM_ADDR_RTMD], buffer, MEM_SIZE_RTMD);
+						GattGetData(LIST_CMD, CMD_RTMD, (uint8_t *)&temp16);
+						GattSetData(LIST_DTA, DTA_TOMD, (uint8_t *)&temp16);
+						printf("temp16 = %d\n", temp16);
+						g_UserSet.tomd = (double)temp16;
+						EEpUpdateEnable();
+					 break;	
+					#endif
+					#ifdef TIME_ZONE_SET
+					case BLE_CMD_TMZS:
+						memcpy((uint8_t *)&g_GattMem[MEM_ADDR_TMZS], buffer, MEM_SIZE_TMZS);
+						GattGetData(LIST_CMD, CMD_TMZS, (uint8_t *)&g_UserSet.timezone);
+					    printf("time zone  = %d\n", g_UserSet.timezone);
+						EEpUpdateEnable();
+					 break;	
+					 case BLE_CMD_MXPS:
+						/*memcpy((uint8_t *)&g_GattMem[MEM_ADDR_MXPS], buffer, MEM_SIZE_MXPS);
+						GattGetData(LIST_CMD, CMD_MXPS, (uint8_t *)&temp16);
+						printf("max speed limit = %d\n", temp16);
+						g_UserSet.max_speed_limit = temp16;
+						EEpUpdateEnable();*/
+					 break;
+					 #endif
+					case BLE_CMD_HBFQ:
 						memcpy((uint8_t*)&g_GattMem[MEM_ADDR_HBFQ],buffer,MEM_SIZE_HBFQ);
 						GattGetData( LIST_CMD, CMD_HBFQ, (uint8_t*)&temp16);
 					    g_UserSet.heartbeat=temp16;
 					    EEpUpdateEnable();
-						break;
-					
-						case BLE_CMD_ADDR:
-						memcpy((uint8_t *)&g_GattMem[MEM_ADDR_ADDR], buffer, MEM_SIZE_HBFQ);
-						GattGetData(LIST_CMD, CMD_ADDR, (uint8_t *)&temp16);
-						g_UserSet.canid_cnt = temp16;
-						printf("temp ADDR= %d\n", g_UserSet.canid_cnt);
-						EEpUpdateEnable();
 						break;	
-					
 					#ifdef P10KW_PROJECT	
 					case BLE_CMD_AOCT:
 							memcpy((uint8_t*)&g_GattMem[MEM_ADDR_AOCT],buffer,MEM_SIZE_AOCT);
@@ -2114,9 +2149,8 @@ void BleCmdProc(void)
 				}
 
 			memset((void*)g_Uart1Buf,0x00,UART1_RX_BUF_SIZE);
-			huart2.RxXferCount=0;
-			huart2.pRxBuffPtr=(uint8_t*)g_Uart1Buf; 
-				
+			huart1.RxXferCount=0;
+			huart1.pRxBuffPtr=(uint8_t*)g_Uart1Buf; 
 			BleDataReprot(g_bleCmd_State);
 
 			HAL_Delay(100);

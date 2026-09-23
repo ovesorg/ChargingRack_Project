@@ -3,7 +3,7 @@
 
 #define __GPS_H__
 
-#define UART4_RX_BUF_SIZE 512
+#define UART4_RX_BUF_SIZE 2048
 
 
 typedef struct
@@ -38,7 +38,7 @@ typedef struct
 
 } RTC_TimeTypeDef;
 
-extern uint8_t g_UartGpsBuf[UART4_RX_BUF_SIZE];
+
 
 void GpsInit(void);
 void GpsProc(void);

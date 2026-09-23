@@ -3,8 +3,8 @@
 
 
 
-uint8_t base64testSrc[256];
-uint8_t base64testEncode[256];
+//uint8_t base64testSrc[256];
+//uint8_t base64testEncode[256];
 
 
 static const char base64en[] = {
@@ -45,7 +45,7 @@ static const unsigned char base64_suffix_map[256] = {
 
 void Base64Init(void)
 {
-	uint16_t i=0;
+	/*uint16_t i=0;
 	memset(base64testSrc,0x00,256);
 	memset(base64testEncode,0x00,256);
 	for(i=0;i<128;i++)
@@ -57,7 +57,7 @@ void Base64Init(void)
 	memset(base64testSrc,0x00,256);
 	Base64Decode(base64testEncode,base64testSrc);
 
-	LogPrintf("base64:%s",base64testEncode);
+	//LogPrintf("base64:%s",base64testEncode);*/
 }
 
 

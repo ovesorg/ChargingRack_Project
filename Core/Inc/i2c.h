@@ -46,8 +46,8 @@ OF SUCH DAMAGE.
 #define RCU_I2C                 RCU_I2C0
 #define I2C_SCL_PORT            GPIOB
 #define I2C_SDA_PORT            GPIOB
-#define I2C_SCL_PIN             GPIO_PIN_8
-#define I2C_SDA_PIN             GPIO_PIN_9
+#define I2C_SCL_PIN             GPIO_PIN_6
+#define I2C_SDA_PIN             GPIO_PIN_7
 
 /* configure the GPIO ports */
 void gpio_config(void);

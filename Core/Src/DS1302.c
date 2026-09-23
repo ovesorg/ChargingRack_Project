@@ -322,7 +322,7 @@ void ds1302_read_time(DS1302_TIME* time)
   else//晶体正常
   {
     	rec = temp;
-	sec_err_cnt=0;	
+	    sec_err_cnt=0;	
 
 	//if(Sys_Code==0xe3)
 		g_sysStateCode.error.rtc_error=0;//Sys_Code=0x00;
@@ -396,10 +396,8 @@ void Show_Time()
 //  memcpy(TimePrint_buf + n,  "", 1); n += 1;
   memcpy(TimePrint_buf + n,  " \r\n", 3); n += 3;
   
- LogPrintf("key user log  %s‐r\n",TimePrint_buf);
+//  Printf_Usart1(TimePrint_buf);
 }
-
-
 void Rest_Ds1302()
 {
   Write_T.year   = 0x17;
@@ -477,6 +475,7 @@ unsigned int GetDs1302Day(void)
   }
 
   g_ds1302_ErrCnt=0;
+  g_sysStateCode.error.rtc_error=0;
   
   temp4 = (temp3&0x0f);//算已经过去的整年的天数
   temp4 += (temp3>>4)*10;
@@ -622,7 +621,6 @@ unsigned int GetDs1302Min(void)
 
 void InitDs1302(void)//用17年1月1日初始化DS1302
 {
-
 	write_1302(0x8e,0x00);
 	write_1302(0x80,0x00);
 	write_1302(0x82,0x00);
@@ -637,7 +635,7 @@ void InitDs1302(void)//用17年1月1日初始化DS1302
   	tian = 0;
 	#ifdef PAYG_TEST
        day_test_cnt=0;
-        #endif
+    #endif
 //     Rest_Ds1302();
 }
 

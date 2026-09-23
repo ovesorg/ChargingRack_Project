@@ -2,15 +2,15 @@
 
 #define SIF_SYNC 35
 
-static uint8_t sif_sync_tosc = 0;
-static uint8_t sif_send_tosc = 0;
-static uint8_t length = 11;
-static int8_t bit_cnt = 7;
-static uint8_t byte_cnt = 0;
-uint8_t result[12] = {0x08, 0x61, 0x00, 0x10, 0x01, 0x00, 0x80, 0x00, 0x10, 0x20, 0x30, 0};
-uint8_t state_mode = 0;
+__IO uint8_t sif_sync_tosc = 0;
+__IO uint8_t sif_send_tosc = 0;
+__IO uint8_t length = 11;
+__IO int8_t bit_cnt = 7;
+__IO uint8_t byte_cnt = 0;
+__IO uint8_t result[12] = {0x08, 0x61, 0x00, 0x10, 0x01, 0x00, 0x80, 0x00, 0x10, 0x20, 0x30, 0};
+__IO uint8_t state_mode = 0;
 
-Da da = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+__IO Da da = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 void displayParking() // 第一字节内容
 {
@@ -206,20 +206,19 @@ void displayInit()
     // displayReverse();
     displayReady(); 
     Sum_Handle();
-	
 //    printf("da.check = %d\n", da.check);
 //    printf("result[4] =  %d\n", result[4]);
-//    printf("da.paking = %d\n",da.parking);
-//	  printf("da.check = %d",da.check);
-//	  printf("da.handle = %d",da.handle);
-//	  printf("da.Ecu = %d",da.Ecu);
-//	  printf("da.electrical = %d",da.electrical);
-//	  printf("da.speed = %d",da.speed);
-//	  printf("da.parking = %d",da.parking);
-//	  printf("da.reverse = %d",da.reverse);
-//	  printf("da.gearlevel = %d",da.gearlevel);
-//	  printf("da.socsoc = %d",da.soc);
-//	  printf("da.voltsvolts = %d",da.volts);
+    // printf("da.paking = %d\n",da.parking);
+    //	printf("da.check = %d",da.check);
+    //	printf("da.handle = %d",da.handle);
+    //	printf("da.Ecu = %d",da.Ecu);
+    //	printf("da.electrical = %d",da.electrical);
+    //	printf("da.speed = %d",da.speed);
+    //	printf("da.parking = %d",da.parking);
+    //	printf("da.reverse = %d",da.reverse);
+    //	printf("da.gearlevel = %d",da.gearlevel);
+    //	printf("da.socsoc = %d",da.soc);
+    //	printf("da.voltsvolts = %d",da.volts);
 }
 
 void SetDashBoardData(uint8_t state, uint8_t date)
@@ -411,11 +410,11 @@ void timer1_config(void)
     timer_deinit(TIMER1);
     timer_struct_para_init(&timer_initpara);
 
-    timer_initpara.prescaler = 270 - 1;
+    timer_initpara.prescaler = 324 - 1;
     timer_initpara.period = 200 - 1;
     timer_initpara.counterdirection = TIMER_COUNTER_UP;
     timer_init(TIMER1, &timer_initpara);
     timer_interrupt_enable(TIMER1, TIMER_INT_UP);
     timer_enable(TIMER1);
-    nvic_irq_enable(TIMER1_IRQn, 0, 0);
+    nvic_irq_enable(TIMER1_IRQn, 1, 0);
 }

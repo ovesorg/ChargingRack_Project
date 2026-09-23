@@ -46,9 +46,16 @@ const GATT1_Def  g_gatt1_list=
 		{"swch",&g_GattMem[MEM_ADDR_SWCH],"Generic device switch swch = ON | OFF ",TYPE_UINT16},
 		{"read",&g_GattMem[MEM_ADDR_READ], "Last read request of ANY GATT <data> = [opid|...|]",TYPE_UINT16},
 		{"rptm",&g_GattMem[MEM_ADDR_RPTM], "Set notification request mode = [0|1|2|3|4], 0: Auto-Periodic | 1 = Request-Response | 2 = Change-Notification",TYPE_UINT16},
-		{"raml",&g_GattMem[MEM_ADDR_RAML],"raml list set",TYPE_STRS},
-		{"hbfq",&g_GattMem[MEM_ADDR_HBFQ],"Heart Beat Interval Minutes",TYPE_UINT16},
-		{"addr",&g_GattMem[MEM_ADDR_ADDR],"addr:0:Device Address (0~65536)",TYPE_UINT16}
+		{"raml",&g_GattMem[MEM_ADDR_RAML],"raml list set",TYPE_SUB_STRS},
+		#ifdef MILEAGE_RECORD_SUPPORT
+		{"rtmd", &g_GattMem[MEM_ADDR_RTMD], "Total adjusted mileage", TYPE_FLOAT_STR},
+		#endif
+		#ifdef TIME_ZONE_SET
+		{"tmzs", &g_GattMem[MEM_ADDR_TMZS], "Time zone setting", TYPE_INT},
+		{"mxps", &g_GattMem[MEM_ADDR_MXPS], "Maximum travel speed setting", TYPE_UINT16},
+		#endif
+		{"hbfq",&g_GattMem[MEM_ADDR_HBFQ],"Heart Beat Interval Minutes",TYPE_UINT16}
+		
 
 		#ifdef P10KW_PROJECT
 		,
@@ -216,10 +223,14 @@ const GATT1_Def  g_gatt1_list=
 		{"outp",&g_GattMem[MEM_ADDR_OUTP],"Output Power W,",TYPE_UINT16},
 		{"aeng",&g_GattMem[MEM_ADDR_AENG],"Accumulated Energy Output in Whs",TYPE_UINT16},
 		{"pckv",&g_GattMem[MEM_ADDR_PCKV],"Pack Voltage mV",TYPE_UINT32},
+		#ifdef GROWATT_BMS
+		{"pckc",&g_GattMem[MEM_ADDR_PCKC],"Pack Current in A",TYPE_INT},
+		#else
 		{"pckc",&g_GattMem[MEM_ADDR_PCKC],"Pack Current in mA",TYPE_INT},
+		#endif
 		{"rsoc",&g_GattMem[MEM_ADDR_RSOC],"Relative State of Charge",TYPE_UINT16},
 		{"rcap",&g_GattMem[MEM_ADDR_RCAP],"Remaining Capacity in Whs",TYPE_UINT16},
-		{"fccp",&g_GattMem[MEM_ADDR_FCCP],"Full Charge Capacity in Whs",TYPE_UINT32},
+		{"fccp",&g_GattMem[MEM_ADDR_FCCP],"Full Charge Capacity in Whs",TYPE_UINT16},
 		{"pckt",&g_GattMem[MEM_ADDR_PCKT],"Pack Temperature in Celsius",TYPE_INT},
 		#ifdef BMS_SUPPWR_SUPPORT
 		{"acyc",&g_GattMem[MEM_ADDR_ACYC],"Accumulated Cycles",TYPE_UINT16},
@@ -237,15 +248,25 @@ const GATT1_Def  g_gatt1_list=
 		{"pmcs",&g_GattMem[MEM_ADDR_PMCS],"PACK MOSFET control status",TYPE_UINT16},
 		{"cmos",&g_GattMem[MEM_ADDR_CMOS],"Charging MOS Status, 0 for off, 1 for on",TYPE_UINT16}, 
 		{"dmos",&g_GattMem[MEM_ADDR_DMOS],"Discharging MOS Status, 0 for off, 1 for on",TYPE_UINT16}, 
+		#ifndef E_MOB48V_PROJECT_BAT
 		{"ctmp",&g_GattMem[MEM_ADDR_CTMP],"Controller temperature (uint8_t, 1 Celsius) - Offset: 40, Min: -40",TYPE_INT}, 
 		{"mtpm",&g_GattMem[MEM_ADDR_MTPM],"Motor temperature (uint8_t, 1 Celsius) - Offset: 40, Min: -40, Max: 200",TYPE_INT}, 
 		{"mtrd",&g_GattMem[MEM_ADDR_MTRD],"Motor speed (uint16_t, 1RPM)",TYPE_UINT16}, 
 		{"tspd",&g_GattMem[MEM_ADDR_TSPD],"Tyre speed (uint16_t, 1RPM)",TYPE_UINT16}, 
 		{"rvlt",&g_GattMem[MEM_ADDR_RVLT],"Real-time voltage ",TYPE_UINT16}, 
+		#ifdef GROWATT_BMS
 		{"rcur",&g_GattMem[MEM_ADDR_RCUR],"Real-time current",TYPE_INT},
+		#else
+		{"rcur",&g_GattMem[MEM_ADDR_RCUR],"Real-time current",TYPE_INT},
+		#endif
 		{"rmax",&g_GattMem[MEM_ADDR_RMAX],"Rated maximum input current ",TYPE_UINT16}, 
 		{"cmxs",&g_GattMem[MEM_ADDR_CMXS],"Current set maximum speed (uint16_t, 1RPM) - Min: 0, Max: 20000",TYPE_UINT16}, 
-		{"cmxc",&g_GattMem[MEM_ADDR_CMXC],"Current set maximum input current (uint16_t, 1A) - Min: 0, Max: 2000",TYPE_UINT16}, 
+		{"cmxc",&g_GattMem[MEM_ADDR_CMXC],"Current set maximum input current (uint16_t, 1A) - Min: 0, Max: 2000",TYPE_UINT16},
+		#ifdef MILEAGE_RECORD_SUPPORT
+		{"tomd", &g_GattMem[MEM_ADDR_TOMD], "Total mileage driven,Km", TYPE_FLOAT_STR},
+		{"cumd", &g_GattMem[MEM_ADDR_CUMD], "Current mileage driven,Km", TYPE_FLOAT_STR},
+		#endif
+		#endif
 		#endif
 		
 		},
@@ -256,6 +277,7 @@ const GATT1_Def  g_gatt1_list=
 		{"cv02",&g_GattMem[MEM_ADDR_CV02],"Cell 02 Voltage mV",TYPE_UINT16},
 		{"cv03",&g_GattMem[MEM_ADDR_CV03],"Cell 03 Voltage mV",TYPE_UINT16},
 		{"cv04",&g_GattMem[MEM_ADDR_CV04],"Cell 04 Voltage mV",TYPE_UINT16},
+		#ifndef E_MOB48V_PROJECT_CAMP
 		{"cv05",&g_GattMem[MEM_ADDR_CV05],"Cell 05 Voltage mV",TYPE_UINT16},
 		{"cv06",&g_GattMem[MEM_ADDR_CV06],"Cell 06 Voltage mV",TYPE_UINT16},
 		{"cv07",&g_GattMem[MEM_ADDR_CV07],"Cell 07 Voltage mV",TYPE_UINT16},
@@ -268,6 +290,7 @@ const GATT1_Def  g_gatt1_list=
 		{"cv14",&g_GattMem[MEM_ADDR_CV14],"Cell 14 Voltage mV",TYPE_UINT16},
 		{"cv15",&g_GattMem[MEM_ADDR_CV15],"Cell 15 Voltage mV",TYPE_UINT16},
 		{"cv16",&g_GattMem[MEM_ADDR_CV16],"Cell 16 Voltage mV",TYPE_UINT16}
+		#ifndef GROWATT_BMS
 		#ifdef BMS_JBD_SUPPROT
 		,{"cv17",&g_GattMem[MEM_ADDR_CV17],"Cell 17 Voltage mV",TYPE_UINT16}
 		,{"cv18",&g_GattMem[MEM_ADDR_CV18],"Cell 18 Voltage mV",TYPE_UINT16}
@@ -289,8 +312,32 @@ const GATT1_Def  g_gatt1_list=
 		,{"pkt5",&g_GattMem[MEM_ADDR_TEMP5],"Pack Temperature-5 Celsius",TYPE_INT}
 		,{"pkt6",&g_GattMem[MEM_ADDR_TEMP6],"Pack Temperature-6 Celsius",TYPE_INT}
 		#endif
+		#endif
+		#endif
 
 		}	
+	#elif defined(CHARGE_STATION)		
+	{	//dta
+		//{"_meta":"Camp specific data available for clients. Read only",
+		{"ronu",&g_GattMem[MEM_ADDR_RONU],"Phase name",TYPE_STRS},
+		{"inpc",&g_GattMem[MEM_ADDR_INPC],"Phase current, Unit: A",TYPE_UINT16},
+		{"inpv",&g_GattMem[MEM_ADDR_INPV],"Phase voltage, Unit: V",TYPE_UINT16},
+		{"chpo",&g_GattMem[MEM_ADDR_CHPO],"Phase current, Unit: V",TYPE_INT},
+		{"tdec",&g_GattMem[MEM_ADDR_TDEC],"Electricity of the day, Unit: Kwh",TYPE_UINT32},
+		{"moec",&g_GattMem[MEM_ADDR_MOEC],"Electricity for the month, Unit: Kwh",TYPE_UINT32},
+		},
+		
+	{	//dia
+		//{"_meta":"Oasis-1K specific diagnostics available service personnel. Read only",
+		{"cnum",&g_GattMem[MEM_ADDR_CNUM],"Charging slot number",TYPE_STRS},
+		{"btid",&g_GattMem[MEM_ADDR_BTID],"Battery number of the current slot charge",TYPE_STRS},
+		{"chst",&g_GattMem[MEM_ADDR_CHST],"Current battery status, Charging: 1,Not charging: 0",TYPE_UINT16},
+		{"rsoc",&g_GattMem[MEM_ADDR_RSOC],"Current battery's State of Charge (SOC), Unit: %",TYPE_UINT16},
+		{"reca",&g_GattMem[MEM_ADDR_RECA],"Current battery capacity, Unit: Wh",TYPE_UINT16},
+		{"pckv",&g_GattMem[MEM_ADDR_PCKV],"Pack Voltage ,Unit: V",TYPE_UINT16},
+		{"pckc",&g_GattMem[MEM_ADDR_PCKC],"Pack Current ,Unit: A",TYPE_UINT16},
+
+		}		
 	#elif defined(DC_PUMP_SUPPORT)	
 	{
 		{"mfrq",&g_GattMem[MEM_ADDR_MFRQ],"motor frequency",TYPE_UINT16},
@@ -319,8 +366,8 @@ uint8_t GattGetUpdateState(uint8_t dt_list)
 void GattSetUpdateState(uint8_t dt_list,uint8_t state)
 {
 	uint8_t *p=g_GattListUpdateState.att;
-	
-	p[dt_list]=state;
+	if(dt_list<sizeof(g_GattListUpdateState))
+		p[dt_list]=state;
 }
 
 
@@ -524,9 +571,27 @@ uint8_t GattSetData(uint8_t list,uint8_t id,uint8_t*data)
 			
 			memcpy(p[id].value,data,4);
 			break;
+		case TYPE_INT32:	
+			if(p[id].value[0]!=data[0]||p[id].value[1]!=data[1]
+			    ||p[id].value[2]!=data[2]||p[id].value[3]!=data[3])
+				update[id]=TRUE;
+			
+			memcpy(p[id].value,data,4);
+			break;	
+		case TYPE_SUB_STRS:	
+			if(strcmp(p[id].value,(char*)data)!=0)
+				update[id]=TRUE;
+			
+			memcpy(p[id].value,data,strlen((char*)data));
+			break;	
 		 default:
 			return FALSE;
 	}
+
+	/*if(g_GattMem[0]==0x00)
+		#ifdef DEBUG_AT_LOG
+		LogPrintf("---------------system error---------------- \r\n");
+		#endif*/
 	return TRUE;
 }
 
@@ -559,6 +624,12 @@ uint8_t GattGetData(uint8_t list,uint8_t id,uint8_t*data)
 		case TYPE_UINT32:	
 			memcpy(data,p[id].value,4);
 			break;	
+		case TYPE_INT32:	
+			memcpy(data,p[id].value,4);
+			break;	
+		case TYPE_SUB_STRS:	
+			memcpy(data,p[id].value,strlen((char*)p[id].value));
+			break;
 		default:
 			return FALSE;
 	}
@@ -599,6 +670,14 @@ uint8_t GattGetDataStr(uint8_t list,uint8_t id,uint8_t*data)
 			//memcpy(data,p[id].value,4);
 			sprintf(data,"%s:%d\0",p[id].prop,*((uint32_t*)p[id].value));
 			break;	
+		case TYPE_INT32:	
+			//memcpy(data,p[id].value,4);
+			sprintf(data,"%s:%d\0",p[id].prop,*((int32_t*)p[id].value));
+			break;	
+		case TYPE_SUB_STRS:	
+			//memcpy(data,p[id].value,strlen((char*)p[id].value));
+			sprintf(data,"%s:%s\0",p[id].prop,p[id].value);
+			break;
 		default:
 			return FALSE;
 	}
@@ -692,7 +771,7 @@ const GATT_Def  g_gatt_list=
 		{"sstc",&g_gatt_value.sstc," System Status Code",0,&g_gatt_meta_ctrl.sstc},
 		{"rsoc",&g_gatt_value.rsoc,"Relative State of Charge",0,&g_gatt_meta_ctrl.rsoc},
 		{"rcap",&g_gatt_value.rcap," Remaining Cpacity in Whs",0,&g_gatt_meta_ctrl.rcap},
-		{"fccp",&g_gatt_value.rdbk," Full Charge Capacity in Whs",0,&g_gatt_meta_ctrl.rdbk},
+		{"fccp",&g_gatt_value.fccp," Full Charge Capacity in Whs",0,&g_gatt_meta_ctrl.fccp},
 		{"rdbk",&g_gatt_value.rdbk," Run Days Backup",0,&g_gatt_meta_ctrl.rdbk},
 		{"acyc",&g_gatt_value.acyc," Accumulated Cycles",0,&g_gatt_meta_ctrl.acyc},
 		{"pubk",(uint16_t*)g_gatt_value.pubk," Public Key Hash Top",1,&g_gatt_meta_ctrl.pubk},
@@ -728,6 +807,8 @@ const GATT_Def  g_gatt_list=
 
 void GattInit(void)
 {
+   uint8_t tempBuff[128]={0},i=0;
+   
    memset((uint8_t*)&g_gatt_value,0x00,sizeof(GATT_PARA_Def));
    memset((uint8_t*)&g_gatt_meta_ctrl,0x00,sizeof(GATT_META_Def));
 
@@ -740,10 +821,24 @@ void GattInit(void)
 
    GattSetGpsCordLon("0.00");
    GattSetGpsCordLat("0.00");
-   #ifdef E_MOB48V_PROJECT
+   #if defined(E_MOB48V_PROJECT)
    GattSetData( LIST_DTA, DTA_SLAT,"0.00");
    GattSetData( LIST_DTA, DTA_SLON,"0.00");
    GattSetData( LIST_DTA, DTA_SSTM," ");
+
+   tempBuff[0]='[';
+   for(i=0;i<g_UserSet.raml_num;i++)
+   { 
+  	 if(strlen(tempBuff)<24)
+   		sprintf(tempBuff+strlen(tempBuff),"\"%s\",",g_UserSet.raml[i]);
+   	}
+
+	if(g_UserSet.raml_num)
+		tempBuff[strlen(tempBuff)-1]=']';
+	else
+		tempBuff[strlen(tempBuff)]=']';
+   
+   GattSetData( LIST_CMD, CMD_RAML,tempBuff);
    #endif
   
 }
@@ -1118,9 +1213,12 @@ uint8_t* GattAllFieldJsonMerge(void)
 
 	json=g_pub_json;
 
-	GattSetGprsConnectFailCnt(0);
+	GattSetGprsConnectFailCnt(g_UserSet.report_fail_cnt);
 	GattSetGprsConnectTime(g_UserSet.onlinetime);
-//   	GattSetGprsSleepTime(g_UserSet.sleeptime);
+   	GattSetGprsSleepTime(g_UserSet.sleeptime);
+
+	if(g_UserSet.raml_num==0)
+		GattSetData( LIST_CMD, CMD_RAML, "null");
 	
 	for(i=0;i<LIST_COUNT;i++)
 	{
@@ -1150,14 +1248,30 @@ uint8_t* GattAllFieldJsonMerge(void)
 			case LIST_DTA:	
 			    json-=1;
 				//cmd
+				#ifdef CHARGE_STATION
+				memcpy(json,"},",2);
+				json+=2;
+				GattDtaArrayFieldMerge(json);
+				json+=strlen((char*)json);
+				continue;
+				#else
 				memcpy(json,"},\"dta\":{",9);
+				#endif
 				//json+=strlen(json);
 				break;
 			case LIST_DIA:
+				#ifdef CHARGE_STATION
+				memcpy(json,",",1);
+				json+=1;
+				GattDiaArrayFieldMerge(json);
+				json+=strlen((char*)json);
+				continue;
+				#else
 			    json-=1;
 				//cmd
 				memcpy(json,"},\"dia\":{",9);
 				//json+=strlen(json);
+				#endif
 				break;
 			}
 		
@@ -1173,10 +1287,14 @@ uint8_t* GattAllFieldJsonMerge(void)
 						sprintf((char*)json,"\"%s\":%d,",p[j].prop,*((int16_t*)p[j].value));
 					else if(p[j].data_type==TYPE_STRS)
 						sprintf((char*)json,"\"%s\":\"%s\",",p[j].prop,p[j].value);
+					else if(p[j].data_type==TYPE_SUB_STRS)
+						sprintf((char*)json,"\"%s\":%s,",p[j].prop,p[j].value);
 					else if(p[j].data_type==TYPE_FLOAT_STR)
 						sprintf((char*)json,"\"%s\":%s,",p[j].prop,p[j].value);
 					else if(p[j].data_type==TYPE_UINT32)
 						sprintf((char*)json,"\"%s\":%d,",p[j].prop,(*(uint32_t*)p[j].value));
+					else if(p[j].data_type==TYPE_INT32)
+						sprintf((char*)json,"\"%s\":%d,",p[j].prop,(*(int32_t*)p[j].value));
 					else
 						sprintf((char*)json,"\"%s\":%d,",p[j].prop,(*(uint16_t*)p[j].value));
 					}
@@ -1185,9 +1303,13 @@ uint8_t* GattAllFieldJsonMerge(void)
 			}
 
 		}
-	
+
+	#ifdef CHARGE_STATION
+	memcpy(json,"}",1);
+	#else
 	json-=1;
 	memcpy(json,"}}",2);
+	#endif
 
 	AtSetTopicId(NULL);
 
@@ -1213,9 +1335,9 @@ uint8_t* GattDtTypeFieldJsonMerge(uint8_t dt_type,uint8_t meta)
 
 	//memcpy(json,"{",1);
 
-	GattSetGprsConnectFailCnt(0);
+	GattSetGprsConnectFailCnt(g_UserSet.report_fail_cnt);
 	GattSetGprsConnectTime(g_UserSet.onlinetime);
-  // 	GattSetGprsSleepTime(g_UserSet.sleeptime);
+   	GattSetGprsSleepTime(g_UserSet.sleeptime);
 
 	//json+=7;
 	json+=strlen((char*)json);
@@ -1284,10 +1406,14 @@ uint8_t* GattDtTypeFieldJsonMerge(uint8_t dt_type,uint8_t meta)
 						sprintf((char*)json,"\"%s\":%d,",p[i].prop,*((int16_t*)p[i].value));
 				else if(p[i].data_type==TYPE_STRS)
 					sprintf((char*)json,"\"%s\":\"%s\",",p[i].prop,p[i].value);
+				else if(p[i].data_type==TYPE_SUB_STRS)
+					sprintf((char*)json,"\"%s\":%s,",p[i].prop,p[i].value);
 				else if(p[i].data_type==TYPE_FLOAT_STR)
 					sprintf((char*)json,"\"%s\":%s,",p[i].prop,p[i].value);
 				else if(p[i].data_type==TYPE_UINT32)
 					sprintf((char*)json,"\"%s\":%d,",p[i].prop,(*(uint32_t*)p[i].value));
+				else if(p[i].data_type==TYPE_INT32)
+					sprintf((char*)json,"\"%s\":%d,",p[i].prop,(*(int32_t*)p[i].value));
 				else
 					sprintf((char*)json,"\"%s\":%d,",p[i].prop,*((uint16_t*)p[i].value));
 
@@ -1319,9 +1445,9 @@ uint8_t* GattSingleFieldMerge(uint8_t *tag_str)
 	memset(g_pub_json,0x00,JSON_LEN);
 	memset(topic_ext,0x00,20);
 
-	GattSetGprsConnectFailCnt(0);
+	GattSetGprsConnectFailCnt(g_UserSet.report_fail_cnt);
 	GattSetGprsConnectTime(g_UserSet.onlinetime);
-  // 	GattSetGprsSleepTime(g_UserSet.sleeptime);
+   	GattSetGprsSleepTime(g_UserSet.sleeptime);
 
 	json=g_pub_json;
 
@@ -1391,10 +1517,14 @@ uint8_t* GattSingleFieldMerge(uint8_t *tag_str)
 						sprintf((char*)json,"\"%s\":%d",p[i].prop,*((int16_t*)p[i].value));
 					else if(p[i].data_type==TYPE_STRS)
 						sprintf((char*)json,"\"%s\":\"%s\"",p[i].prop,p[i].value);
+					else if(p[i].data_type==TYPE_SUB_STRS)
+						sprintf((char*)json,"\"%s\":%s",p[i].prop,p[i].value);
 					else if(p[i].data_type==TYPE_FLOAT_STR)
 						sprintf((char*)json,"\"%s\":%s",p[i].prop,p[i].value);
 					else if(p[i].data_type==TYPE_UINT32)
 						sprintf((char*)json,"\"%s\":%d",p[i].prop,(*(uint32_t*)p[i].value));
+					else if(p[i].data_type==TYPE_INT32)
+						sprintf((char*)json,"\"%s\":%d",p[i].prop,(*(int32_t*)p[i].value));
 					else
 						sprintf((char*)json,"\"%s\":%d",p[i].prop,*((uint16_t*)p[i].value));
 					
@@ -1430,9 +1560,9 @@ uint8_t* GattMultiFieldMerge(void)
 	memset(g_pub_json,0x00,JSON_LEN);
 	memset(topic_ext,0x00,20);
 
-	GattSetGprsConnectFailCnt(0);
+	GattSetGprsConnectFailCnt(g_UserSet.report_fail_cnt);
 	GattSetGprsConnectTime(g_UserSet.onlinetime);
-  // 	GattSetGprsSleepTime(g_UserSet.sleeptime);
+   	GattSetGprsSleepTime(g_UserSet.sleeptime);
 
 	json=g_pub_json;
 
@@ -1496,10 +1626,14 @@ uint8_t* GattMultiFieldMerge(void)
 					sprintf((char*)json,"\"%s\":%d,",p[i].prop,*((int16_t*)p[i].value));
 				else if(p[i].data_type==TYPE_STRS)
 					sprintf((char*)json,"\"%s\":\"%s\",",p[i].prop,p[i].value);
+				else if(p[i].data_type==TYPE_SUB_STRS)
+					sprintf((char*)json,"\"%s\":%s,",p[i].prop,p[i].value);
 				else if(p[i].data_type==TYPE_FLOAT_STR)
 					sprintf((char*)json,"\"%s\":%s,",p[i].prop,p[i].value);
 				else if(p[i].data_type==TYPE_UINT32)
 					sprintf((char*)json,"\"%s\":%d,",p[i].prop,(*(uint32_t*)p[i].value));
+				else if(p[i].data_type==TYPE_INT32)
+					sprintf((char*)json,"\"%s\":%d,",p[i].prop,(*(int32_t*)p[i].value));
 				else
 					sprintf((char*)json,"\"%s\":%d,",p[i].prop,*((uint16_t*)p[i].value));
 
@@ -1612,7 +1746,150 @@ uint8_t* GattAbacFieldMerge(void)
 
 	return g_pub_json;
 }
+#ifdef CHARGE_STATION
 
+extern EMETER_INFOR_TypeDef EmeterInfor;
+extern __IO double g_lon,g_lat;
+
+const uint8_t *chargeId[CHARGE_NUM]=
+{
+	"A1\0","A2\0",
+	"B1\0","B2\0",
+	"C1\0","C2\0"
+	};
+
+//const uint8_t *chargeId[CHARGE_NUM]=
+//{
+//	"A1\0","A2\0","A3\0","A4\0","A5\0",
+//	"B1\0","B2\0","B3\0","B4\0","B5\0",
+//	"C1\0","C2\0","C3\0","C4\0","C5\0"
+//	};
+
+uint8_t g_slot_index=0;	
+
+void GattSlotIndexSet(uint8_t index)
+{
+	g_slot_index=index;
+}
+void GattDtaArrayFieldMerge(uint8_t * buf)
+{
+	uint8_t i,*json;
+
+
+	json=buf;
+
+	if(buf==NULL)
+		return ;
+
+	memcpy(json,"\"dta\":{",7);
+	json+=strlen((char*)json);
+	memcpy(json,"\"AC_input\":[",12);
+	json+=strlen((char*)json);
+
+	//for(i=0;i<3;i++)
+	{
+		sprintf((char*)json,"{\"ronu\":\"%c\",\"inpc\":%d,\"inpv\":%d},",'A',EmeterInfor.phase_a_current/1000,EmeterInfor.phase_a_voltage/10);
+		json+=strlen((char*)json);
+		sprintf((char*)json,"{\"ronu\":\"%c\",\"inpc\":%d,\"inpv\":%d},",'B',EmeterInfor.phase_b_current/1000,EmeterInfor.phase_b_voltage/10);
+		json+=strlen((char*)json);
+		sprintf((char*)json,"{\"ronu\":\"%c\",\"inpc\":%d,\"inpv\":%d}],",'C',EmeterInfor.phase_c_current/1000,EmeterInfor.phase_c_voltage/10);
+		json+=strlen((char*)json);
+	}
+
+	sprintf((char*)json,"\"Charge\":{\"chpo\":%ld,\"tdec\":%ld,\"moec\":%ld},",EmeterInfor.current_energy/100 ,EmeterInfor.total_power/10/1000,EmeterInfor.total_power/10/1000);
+	json+=strlen((char*)json);
+	sprintf((char*)json,"\"Gps\":{\"slon\":%f,\"slat\":%f}}",g_lon ,g_lat);
+	
+}
+
+extern SLOT_BATINFOR_TypeDef g_SlotBmsInfor[CHARGE_NUM];
+
+void GattDiaArrayFieldMerge(uint8_t * buf)
+{
+	uint8_t i,*json;
+	
+	json=buf;
+
+	if(buf==NULL)
+		return ;
+
+	memcpy(json,"\"dia\":{",7);
+	json+=strlen((char*)json);
+	memcpy(json,"\"Charge_slot\":[",15);
+	json+=strlen((char*)json);
+
+	for(i=0;i<CHARGE_NUM;i++)
+	{
+		uint8_t *sn_no=g_SlotBmsInfor[i].BatteryID;
+		float remaincap=g_SlotBmsInfor[i].RemainCap;
+		uint8_t soc=g_SlotBmsInfor[i].Soc;
+		uint32_t pckv=g_SlotBmsInfor[i].ChargeVoltage;
+		uint16_t pckc=g_SlotBmsInfor[i].ChargeCurrent;
+		
+		sprintf((char*)json,"{\"cnum\":\"%s\",\"btid\":\"%s\",\"chst\":%d,\"rsoc\":%d,\"reca\":%.03f,\"pckv\":%ld,\"pckc\":%ld},",\
+			chargeId[i],sn_no,(pckc>0?1:0),soc,remaincap,pckv,pckc*100);
+			
+		json+=strlen((char*)json);
+		}
+    json-=1;
+	memcpy(json,"]}",2);
+
+}
+
+void GattSlotBmsFieldMerge(void)
+{
+	uint8_t i=0,*json=g_pub_json,slot=g_slot_index;
+
+	uint8_t *sn_no=g_SlotBmsInfor[slot].BatteryID;
+	float remaincap=g_SlotBmsInfor[slot].RemainCap;
+	uint8_t soc=g_SlotBmsInfor[slot].Soc;
+	uint32_t pckv=g_SlotBmsInfor[slot].ChargeVoltage;
+	uint16_t pckc=g_SlotBmsInfor[slot].ChargeCurrent;
+
+	memset(g_pub_json,0x00,JSON_LEN);
+
+	memcpy(json,"{\"dia\":{",8);
+	json+=strlen((char*)json);
+	memcpy(json,"\"Charge_slot\":[",15);
+	json+=strlen((char*)json);
+
+	if(slot>=CHARGE_NUM)
+		slot=0;
+
+	i=slot;
+
+	//for(i=0;i<CHARGE_NUM;i++)
+	{
+		sprintf((char*)json,"{\"cnum\":\"%s\",\"btid\":\"%s\",\"chst\":%d,\"rsoc\":%d,\"reca\":%.03f,\"pckv\":%ld,\"pckc\":%d}],",\
+			chargeId[i],sn_no,(pckc>0?1:0),soc,remaincap,pckv,pckc);
+		//sprintf((char*)json,"{\"btid\":\"%s\"},",\
+		//	chargeId[i],sn_no)	;
+		json+=strlen((char*)json);
+		}
+
+	memcpy(json,"\"Cell_Voltage\":[{",17);
+	json+=strlen((char*)json);
+
+	for(i=0;i<23;i++)
+	{
+		sprintf((char*)json,"\"cv%02d\":\"%d\",",i+1,g_SlotBmsInfor[slot].cellVoltage[i]);
+		json+=strlen((char*)json);
+		}
+    json-=1;
+	memcpy(json,"}],\"Cell_Temperature\":[{",24);
+	json+=strlen((char*)json);
+
+	for(i=0;i<6;i++)
+	{
+		sprintf((char*)json,"\"pkt%d\":\"%d\",",i+1,g_SlotBmsInfor[slot].temp[i]);
+		json+=strlen((char*)json);
+		}
+    json-=1;
+	memcpy(json,"}]}}",4);
+
+}
+
+#endif
 #endif
 #endif
 
@@ -1641,6 +1918,22 @@ void GattSetCmdUplinkData(uint8_t *buf)
 	memcpy(json,"}}",2);
 }
 
+void GattSetCmdRamlUplinkData(uint8_t *buf)
+{
+	uint8_t*json=g_pub_json;
+	
+	memset(g_pub_json,0x00,JSON_LEN);
+
+	memcpy(json,"{\"cmd\":",8);
+	json+=strlen((char*)json);
+
+	if(strlen((char*)buf)<JSON_LEN-10)
+		memcpy(json,buf,strlen((char*)buf));
+
+	json+=strlen((char*)json);
+
+	memcpy(json,"}",2);
+}
 
 uint8_t *GattGetJsonBuff(void)
 {
@@ -1675,13 +1968,16 @@ void GattSetOpid(uint8_t*opid,uint8_t size)
 {
 	if(size<=20)
 	{	memcpy(g_gatt_value.opid,opid,size);
+		#ifdef E_MOB48V_PROJECT_CAMP
+	    memcpy(g_UserSet.Payg.oem_id,opid,size); //for mqtt client id
+		#endif
 		GattSetData( LIST_ATT, ATT_OPID, g_gatt_value.opid);
 		}
 }
 
 void GattSetVersion(uint8_t*rev,uint8_t size)
 {
-	if(size<=15)
+	if(size<=8)
 	{	memcpy(g_gatt_value.rev,rev,size);
 	
 		GattSetData( LIST_ATT, ATT_FRMV, g_gatt_value.rev);	
@@ -1765,15 +2061,19 @@ void GattSetRunDayBackup(uint16_t day)//Run_Days_Backup
 	//GattSetData( LIST_DTA, DTA_r, (uint16_t*)&day);
 }
 
-void GattSetAccuCyc(uint32_t cyc)//Accu_Cycles
+void GattSetAccuCyc(uint16_t cyc)//Accu_Cycles
 {
-	g_gatt_value.fccp=cyc;
-	GattSetData( LIST_DTA, DTA_FCCP, (uint8_t*)&g_gatt_value.fccp);
+	g_gatt_value.acyc=cyc;
+	//GattSetData( LIST_DTA, DTA_FCCP, (uint8_t*)&cap);
 }
 	
 void GattSetHashTop(uint8_t*hash,uint8_t size)//PAYG_Security_Hash_Top
 {
+#ifdef IAP_SUPPORT
+	if(size<=31&&size>=20)
+#else
 	if(size<=31)
+#endif		
 	{	memcpy(g_gatt_value.pubk,hash,size);
 		GattSetData( LIST_CMD, CMD_PUBK, hash);
 		}
@@ -1810,16 +2110,17 @@ void GattSetSolarGeneration(uint16_t solar)//Solar Generation
 void GattSetLoadPower(uint16_t pwr)//Load Power
 {
 	g_gatt_value.outp=pwr;
-
+	#ifndef CHARGE_STATION
 	GattSetData( LIST_DTA, DTA_OUTP, (uint8_t*)&pwr);
-
+	#endif
 }	
 
 uint16_t GattGetLoadPower(void)//Load Power
 {
 	uint16_t temp;
-
+	#ifndef CHARGE_STATION
 	GattGetData( LIST_DTA, DTA_OUTP, (uint8_t*)&temp);
+	#endif
 	return temp;
 	
 	//return g_gatt_value.outp;

@@ -61,12 +61,10 @@ void PendSV_Handler(void);
 void SysTick_Handler(void);
 
 void EXTI0_IRQHandler(void);
-#ifdef GD32F10X_CL
-void CAN0_RX0_IRQHandler(void);
-#else
 void USBD_LP_CAN0_RX0_IRQHandler(void);
-#endif
-void CAN1_RX0_IRQHandler(void);
+/* this function handles RTC global interrupt request */
+//void RTC_Alarm_IRQHandler(void); 
 
  
 #endif /* GD32F10X_IT_H */
+

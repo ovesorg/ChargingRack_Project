@@ -184,7 +184,7 @@ enum
 
 
 void LcdInit(void);
-//void LcdClearAll(void);
+void LcdClearAll(void);
 void LcdSetIcon(uint8_t point,uint8_t enble);
 void ShowStr(uint8_t *str);
 void LcdShowChar(uint8_t pos,uint8_t str);

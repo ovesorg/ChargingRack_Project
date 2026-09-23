@@ -2,6 +2,8 @@
 CAMP_GET_DEF g_CampGetState=CAMP_GET_VER;
 __IO uint8_t g_CampGetEnable=FALSE;
 
+const uint8_t CampCmd_Handshock[]=                           {0xC5,0x6a,0x29,0x06,0x04,0xaa};
+const uint8_t CampCmd_HandshockOK[]=                         {0xC5,0x6a,0x29,0x07,0x04,0x01,0x24};
 
 
 const uint8_t CampCmd_DEVID[]=                           {0xC5,0x6a,0x29,0x06,0xaf,0x25};
@@ -134,6 +136,7 @@ unsigned char crc_array[256] =
 
 extern UART_HandleTypeDef huart3;
 extern UART_HandleTypeDef huart5;
+extern UART_HandleTypeDef huart2;
 
 
 unsigned char CRC8(unsigned char *p, char counter)
@@ -154,7 +157,18 @@ void CampInit(void)
 	   memset((uint8_t*)g_Uart485Buf,0x00,UART3_RX_BUF_SIZE);
 	   //HAL_UART_Receive_IT(&huart1,(uint8_t*)g_Uart1Buf,UART1_RX_BUF_SIZE);
 	   #ifdef BMS_CAMP_SUPPORT
+
+	   CampSend(CampCmd_HandshockOK,7);
+	   HAL_Delay(100);
+	   CampSend(CampCmd_HandshockOK,7);
+	   HAL_Delay(100);
+	   CampSend(CampCmd_HandshockOK,7);
 	   CampStart();
+	   #ifdef GD32F10X_MD
+	   huart2.RxXferSize=UART3_RX_BUF_SIZE;
+	   huart2.pRxBuffPtr=(uint8_t*)g_Uart485Buf;
+	   #else
+	   #endif
 	   //huart5.RxXferSize=UART3_RX_BUF_SIZE;
 	   //huart5.pRxBuffPtr=(uint8_t*)g_Uart485Buf;
 	   #else
@@ -168,7 +182,12 @@ void CampSend(const uint8_t * buffer,uint16_t size)
 {
     // HAL_UART_Transmit(&huart1,(uint8_t *)buffer,size,size*10);
      #ifdef BMS_CAMP_SUPPORT
-     Uart5Send((uint8_t *)buffer,size);
+	 #ifdef GD32F10X_MD
+	 Uart2Send((uint8_t *)buffer,size);
+	 #else
+	 Uart5Send((uint8_t *)buffer,size);
+	 #endif
+
 	 #else
 	 Uart3Send((uint8_t *)buffer,size);
 	 #endif
@@ -559,7 +578,11 @@ uint8_t CampTokenState(void)
 	uint8_t ret=0xff;
 
 	#ifdef BMS_CAMP_SUPPORT
+	#ifdef GD32F10X_MD
+	RxUart3Counter=huart2.RxXferCount;
+	#else
 	RxUart3Counter=huart5.RxXferCount;
+	#endif
 	#else
 	RxUart3Counter=huart3.RxXferCount;
 	#endif
@@ -588,6 +611,7 @@ uint8_t CampTokenState(void)
 			 memset((uint8_t*)g_Uart485Buf,0x00,UART485_RX_BUF_SIZE);
 
 			 #ifdef BMS_CAMP_SUPPORT
+			 
 			 huart5.RxXferSize=UART_DI_RX_BUF_SIZE;
 			 huart5.RxXferCount=0;
 			 huart5.pRxBuffPtr=(uint8_t*)g_Uart485Buf; 
@@ -612,8 +636,13 @@ void CampGetTask(void)
 	uint16_t i,len=0;
 
 	#ifdef BMS_CAMP_SUPPORT
+	#ifdef GD32F10X_MD
+	RxUart3Counter=huart2.RxXferCount;
+	//memcpy((uint8_t*)g_Uart485Buf,(uint8_t*)g_Uart5Buf,RxUart3Counter);
+	#else
 	RxUart3Counter=huart5.RxXferCount;
 	memcpy((uint8_t*)g_Uart485Buf,(uint8_t*)g_Uart5Buf,RxUart3Counter);
+	#endif
 	#else
 	RxUart3Counter=huart3.RxXferCount;
 	#endif
@@ -632,13 +661,20 @@ void CampGetTask(void)
 			  if(g_Uart485Buf[i+len - 1] == CRC8((unsigned char *)&g_Uart485Buf[i], len - 1))
 			  {
 			//          Camp_ComOK = 1;
-			/*            memcpy(Camp_cmd, &g_Uart3Buf[i], len);
+			/*         memcpy(Camp_cmd, &g_Uart3Buf[i], len);
 			           memcpy(Uart_Buffer, &g_Uart3Buf[i], len);
 			            Serial_Cmd(g_Uart3Buf[i+4]);
 
 				    Process_cmd_all(Camp_ComOK);*/
 
-			CampGetParse((uint8_t*)&g_Uart485Buf[i]);
+		    if(strstr((char*)&g_Uart485Buf[i],(char*)CampCmd_Handshock)!=NULL)
+		    {
+		    	CampSend(CampCmd_HandshockOK,7);
+		    	}
+			else
+			{
+				CampGetParse((uint8_t*)&g_Uart485Buf[i]);
+				}
 
 				
 			if(g_CampGetState<CAMP_GET_PCKT)
@@ -650,9 +686,15 @@ void CampGetTask(void)
 			 memset((uint8_t*)g_Uart485Buf,0x00,UART3_RX_BUF_SIZE);
 
 			 #ifdef BMS_CAMP_SUPPORT
+			 #ifdef GD32F10X_MD
+			 huart2.RxXferSize=UART3_RX_BUF_SIZE;
+			 huart2.RxXferCount=0;
+			 huart2.pRxBuffPtr=(uint8_t*)g_Uart485Buf; 
+			 #else
 		   	 huart5.RxXferSize=UART5_RX_BUF_SIZE;
 			 huart5.RxXferCount=0;
 			 huart5.pRxBuffPtr=(uint8_t*)g_Uart5Buf; 
+			 #endif
 			 #else
 			 huart3.RxXferSize=UART3_RX_BUF_SIZE;
 			 huart3.RxXferCount=0;

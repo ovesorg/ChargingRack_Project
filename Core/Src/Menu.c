@@ -424,7 +424,7 @@ void MenuShow(void)
 			}
 		LcdUpdate();
 		#else
-//		LcdClearAll();
+		LcdClearAll();
 
 		memset(tempStr,0x00,12);
 
@@ -432,15 +432,15 @@ void MenuShow(void)
 
 		if(g_led_enable)
 		{
-			//LcdSetIcon(ICON_TCTH,g_PumpLedState.ledbitstate.tank_state);
-			//LcdSetIcon(ICON_WCWH,g_PumpLedState.ledbitstate.well_state);
+			LcdSetIcon(ICON_TCTH,g_PumpLedState.ledbitstate.tank_state);
+			LcdSetIcon(ICON_WCWH,g_PumpLedState.ledbitstate.well_state);
 
-			//LcdSetIcon(ICON_SOLAR,g_PumpLedState.ledbitstate.MPPT_state);
+			LcdSetIcon(ICON_SOLAR,g_PumpLedState.ledbitstate.MPPT_state);
 
 			if(g_PumpLedState.ledbitstate.MPPT_state)
-				//LcdSetIcon(ICON_RUN,g_PumpLedState.ledbitstate.pump_run_state);
+				LcdSetIcon(ICON_RUN,g_PumpLedState.ledbitstate.pump_run_state);
 			
-			//LcdSetIcon(ICON_FAULT,g_PumpLedState.ledbitstate.fault_state);
+			LcdSetIcon(ICON_FAULT,g_PumpLedState.ledbitstate.fault_state);
 			}
 		
 		//if(g_PumpLedState.ledbitstate.MPPT_state)
@@ -462,7 +462,7 @@ void MenuShow(void)
 		 		case MENU_VOLTAGE:
 					if(g_PumpLedState.ledbitstate.MPPT_state)
 					{	sprintf((char*)tempStr,"%3dU",g_MotorCurrent);
-						//LcdSetIcon(ICON_P_2,TRUE);
+						LcdSetIcon(ICON_P_2,TRUE);
 						}
 					else
 						memcpy(tempStr,"---U",4);
@@ -534,7 +534,7 @@ void MenuShow(void)
 				}
 			}
 
-//		ShowStr(tempStr);
+		ShowStr(tempStr);
 		#ifdef UI1K_V13_PROJECT
 		if(g_AcState/*&&PaygGetFreeState()*/
 			#ifdef ROLL_SWITCH
@@ -543,27 +543,27 @@ void MenuShow(void)
 			)
 		{
 			if(MenuGetFlashState())
-				//LcdSetIcon(ICON_POWER,TRUE);
+				LcdSetIcon(ICON_POWER,TRUE);
 			else
-				//LcdSetIcon(ICON_POWER,FALSE);
+				LcdSetIcon(ICON_POWER,FALSE);
 			}
 		if(AdcGetChrgeState())
 		{
 			if(MenuGetFlashState())
-				//LcdSetIcon(ICON_CHARGE,TRUE);
+				LcdSetIcon(ICON_CHARGE,TRUE);
 			else
-				//LcdSetIcon(ICON_CHARGE,FALSE);
+				LcdSetIcon(ICON_CHARGE,FALSE);
 			}
 
 		if(GmsNetConnectState())
 		{
 			if(MenuGetFlashState())
-			{	//LcdSetIcon(ICON_WIFI,TRUE);
-				//LcdSetIcon(ICON_BLE,TRUE);
+			{	LcdSetIcon(ICON_WIFI,TRUE);
+				LcdSetIcon(ICON_BLE,TRUE);
 				}
 			else
-			{	//LcdSetIcon(ICON_WIFI,FALSE);
-				//LcdSetIcon(ICON_BLE,FALSE);
+			{	LcdSetIcon(ICON_WIFI,FALSE);
+				LcdSetIcon(ICON_BLE,FALSE);
 				}
 			}
 		
@@ -703,7 +703,7 @@ void MenuShow(void)
 			{
 				LcdClearAll();
 				
-			        //LcdSetIcon(ICON_POINT,TRUE);
+			        LcdSetIcon(ICON_POINT,TRUE);
 				
 				switch(g_UiMenu.pop_menu)
 				{
@@ -732,7 +732,7 @@ void MenuShow(void)
 				}
 		#endif
 
-		//LcdUpdateAll();
+		LcdUpdateAll();
 
 		#endif
 		#endif
@@ -767,43 +767,43 @@ void MenuShowIdle(uint8_t submenu,uint8_t *tempStr)
 	switch(submenu)
 	{
 		case IDLE_ITEM_LOGO:
-			//LcdSetIcon(ICON_LOGO,TRUE);
+			LcdSetIcon(ICON_LOGO,TRUE);
 			sprintf((char*)tempStr,"%d%d",volt/1000,(volt/100)%10);
-			//LcdSetIcon(ICON_V,TRUE);
-			//LcdSetIcon(ICON_POINT,TRUE);
+			LcdSetIcon(ICON_V,TRUE);
+			LcdSetIcon(ICON_POINT,TRUE);
 			break;
 		case IDLE_ITEM_CHARGE:
-			//LcdSetIcon(ICON_CHARGE,TRUE);
+			LcdSetIcon(ICON_CHARGE,TRUE);
 
 			if(flag&&power)
 				sprintf((char*)tempStr,"-%d",power/10 );
 			else
 				sprintf((char*)tempStr,"%d",power/10 );
-			//LcdSetIcon(ICON_W,TRUE);
+			LcdSetIcon(ICON_W,TRUE);
 			break;
 		case IDLE_TTEM_BATTERY:
-			//LcdSetIcon(ICON_BAT_FRAME,TRUE);
-			//LcdSetIcon(ICON_BAT_20,TRUE);
-			//LcdSetIcon(ICON_BAT_40,TRUE);
-			//LcdSetIcon(ICON_BAT_60,TRUE);
-			//LcdSetIcon(ICON_BAT_80,TRUE);
+			LcdSetIcon(ICON_BAT_FRAME,TRUE);
+			LcdSetIcon(ICON_BAT_20,TRUE);
+			LcdSetIcon(ICON_BAT_40,TRUE);
+			LcdSetIcon(ICON_BAT_60,TRUE);
+			LcdSetIcon(ICON_BAT_80,TRUE);
 			sprintf((char*)tempStr,"%d",(g_bq40z50_state.Relative_State_of_Charge[0] | g_bq40z50_state.Relative_State_of_Charge[1]<<8));
-			//LcdSetIcon(ICON_PRECENT,TRUE);
+			LcdSetIcon(ICON_PRECENT,TRUE);
 			break;
 		case IDLE_ITEM_TIME:
-			//LcdSetIcon(ICON_CLOCK,TRUE);
+			LcdSetIcon(ICON_CLOCK,TRUE);
 			temp=(g_bq40z50_state.Run_Time_To_Full[0] | g_bq40z50_state.Run_Time_To_Full[1]<< 8);
 			if(temp==0xffff)
 				memcpy(tempStr,"----",4);
 			else
 				//sprintf(tempStr,"%d%d",temp/6/10,(temp/6)%10);
 				sprintf((char*)tempStr,"%d",/*(temp/6)/10,(temp/6)%10*/temp);
-			//LcdSetIcon(ICON_h,TRUE);
-			////LcdSetIcon(ICON_POINT,TRUE);
+			LcdSetIcon(ICON_h,TRUE);
+			//LcdSetIcon(ICON_POINT,TRUE);
 			break;
 		case IDLE_ITEM_BLE:
-			//LcdSetIcon(ICON_BLE,TRUE);
-			//LcdSetIcon(ICON_WIFI,TRUE);
+			LcdSetIcon(ICON_BLE,TRUE);
+			LcdSetIcon(ICON_WIFI,TRUE);
 			//sprintf(tempStr,"%s",payg.remaing_days);
 			if(g_UserSet.ble_state)
 				memcpy(tempStr,"on  ",4);
@@ -811,25 +811,25 @@ void MenuShowIdle(uint8_t submenu,uint8_t *tempStr)
 				memcpy(tempStr,"off ",4);
 			break;
 		case IDLE_ITEM_PAYG:
-			//LcdSetIcon(ICON_LOCK,TRUE);
-			//LcdSetIcon(ICON_UNLOCK,TRUE);
+			LcdSetIcon(ICON_LOCK,TRUE);
+			LcdSetIcon(ICON_UNLOCK,TRUE);
 			if(/*payg.remaing_days>=1096||*/payg.free == YES)
 				memcpy(tempStr,"free",4);
 			else	
 				sprintf((char*)tempStr,"%d",payg.remaing_days);
-			//LcdSetIcon(ICON_d,TRUE);
+			LcdSetIcon(ICON_d,TRUE);
 			break;
 		case IDLE_ITEM_POWER:
-			//LcdSetIcon(ICON_POWER,TRUE);
+			LcdSetIcon(ICON_POWER,TRUE);
 			#ifdef ROLL_SWITCH
-//			 if(g_AcState)
-//				memcpy(tempStr,"ac  ",4);
-//			 else if(g_DcState)
-//				memcpy(tempStr,"dc  ",4);
-//			else if(g_UsbState)
-//				memcpy(tempStr,"usb ",4);
-//			else
-//				memcpy(tempStr,"off ",4);
+			 if(g_AcState)
+				memcpy(tempStr,"ac  ",4);
+			 else if(g_DcState)
+				memcpy(tempStr,"dc  ",4);
+			else if(g_UsbState)
+				memcpy(tempStr,"usb ",4);
+			else
+				memcpy(tempStr,"off ",4);
 			#else
 			memcpy(tempStr,"on  ",4);
 			#endif
@@ -861,26 +861,26 @@ void MenuShowLogo(uint8_t submenu,uint8_t *tempStr)
 	power = (uint16_t)(current * CURRENT_CAL * volt / 10000);
 	#endif
 	
-	//LcdSetIcon(ICON_LOGO,TRUE);
-	//LcdSetIcon(ICON_LINE,TRUE);
+	LcdSetIcon(ICON_LOGO,TRUE);
+	LcdSetIcon(ICON_LINE,TRUE);
 
 	switch(submenu)
 	{
 		case LOGO_ITEM_VOLT:
 			sprintf((char*)tempStr,"%d%d",volt/1000,(volt/100)%10);
-			//LcdSetIcon(ICON_V,TRUE);
-			//LcdSetIcon(ICON_POINT,TRUE);
+			LcdSetIcon(ICON_V,TRUE);
+			LcdSetIcon(ICON_POINT,TRUE);
 			break;
 		case LOGO_ITEM_SOC:
 			sprintf((char*)tempStr,"%d",(g_bq40z50_state.Relative_State_of_Charge[0] | g_bq40z50_state.Relative_State_of_Charge[1]<<8));
-			//LcdSetIcon(ICON_PRECENT,TRUE);
+			LcdSetIcon(ICON_PRECENT,TRUE);
 			break;
 		case LOGO_TTEM_PAYG:
 			if(/*payg.remaing_days>=1096||*/payg.free == YES)
 				memcpy(tempStr,"free",4);
 			else	
 				sprintf((char*)tempStr,"%d",payg.remaing_days);
-			//LcdSetIcon(ICON_d,TRUE);
+			LcdSetIcon(ICON_d,TRUE);
 			break;
 		case LOGO_ITEM_CHRGEFULL_TIME:
 
@@ -891,8 +891,8 @@ void MenuShowLogo(uint8_t submenu,uint8_t *tempStr)
 			else
 				sprintf((char*)tempStr,"%d",temp);
 			
-			//LcdSetIcon(ICON_h,TRUE);
-			////LcdSetIcon(ICON_POINT,TRUE);
+			LcdSetIcon(ICON_h,TRUE);
+			//LcdSetIcon(ICON_POINT,TRUE);
 			break;
 		case LOGO_ITEM_REMAIN_TIME:
 
@@ -902,8 +902,8 @@ void MenuShowLogo(uint8_t submenu,uint8_t *tempStr)
 				memcpy(tempStr,"----",4);
 			else
 				sprintf((char*)tempStr,"%d",temp);
-			//LcdSetIcon(ICON_H,TRUE);
-			////LcdSetIcon(ICON_POINT,TRUE);
+			LcdSetIcon(ICON_H,TRUE);
+			//LcdSetIcon(ICON_POINT,TRUE);
 			break;
 		case LOGO_ITEM_PPID:
 			{
@@ -960,8 +960,8 @@ void MenuShowcharge(uint8_t submenu,uint8_t *tempStr)
 	power = (uint16_t)(current * CURRENT_CAL * volt / 10000);
 	#endif
 	
-	//LcdSetIcon(ICON_CHARGE,TRUE);
-	//LcdSetIcon(ICON_LINE,TRUE);
+	LcdSetIcon(ICON_CHARGE,TRUE);
+	LcdSetIcon(ICON_LINE,TRUE);
 	
 	switch(g_UiMenu.submenu)
 	{
@@ -970,7 +970,7 @@ void MenuShowcharge(uint8_t submenu,uint8_t *tempStr)
 				sprintf((char*)tempStr,"-%d",power /10);
 			else
 				sprintf((char*)tempStr,"%d",power/10 );
-			//LcdSetIcon(ICON_W,TRUE);
+			LcdSetIcon(ICON_W,TRUE);
 			break;//W
 		case CHRGE_ITEM_CHRGEFULL_TIME:
 
@@ -980,13 +980,13 @@ void MenuShowcharge(uint8_t submenu,uint8_t *tempStr)
 				memcpy(tempStr,"----",4);
 			else
 				sprintf((char*)tempStr,"%d",temp/*/6/10,(temp/6)%10*/);
-			//LcdSetIcon(ICON_h,TRUE);
-			////LcdSetIcon(ICON_POINT,TRUE);
+			LcdSetIcon(ICON_h,TRUE);
+			//LcdSetIcon(ICON_POINT,TRUE);
 			break;
 		case CHRGE_ITEM_VOLT:
 			sprintf((char*)tempStr,"%d%d",volt/1000,(volt/100)%10);
-			//LcdSetIcon(ICON_V,TRUE);
-			//LcdSetIcon(ICON_POINT,TRUE);
+			LcdSetIcon(ICON_V,TRUE);
+			LcdSetIcon(ICON_POINT,TRUE);
 			break;
 		case CHRGE_ITEM_CURRENT:
 			 
@@ -995,8 +995,8 @@ void MenuShowcharge(uint8_t submenu,uint8_t *tempStr)
 			else
 				sprintf((char*)tempStr,"%d%d",(current /1000),(current /100)%10);
 
-			//LcdSetIcon(ICON_A,TRUE);
-			//LcdSetIcon(ICON_POINT,TRUE);
+			LcdSetIcon(ICON_A,TRUE);
+			LcdSetIcon(ICON_POINT,TRUE);
 			break;
 		case CHRGE_ITEM_ESC:
 			memcpy(tempStr,"ESC ",4);
@@ -1031,18 +1031,18 @@ void MenuShowBattery(uint8_t submenu,uint8_t *tempStr)
 	power = (uint16_t)(current * CURRENT_CAL * volt / 10000);
 	#endif
 	
-	//LcdSetIcon(ICON_BAT_FRAME,TRUE);
-	//LcdSetIcon(ICON_BAT_20,TRUE);
-	//LcdSetIcon(ICON_BAT_40,TRUE);
-	//LcdSetIcon(ICON_BAT_60,TRUE);
-	//LcdSetIcon(ICON_BAT_80,TRUE);
-	//LcdSetIcon(ICON_LINE,TRUE);
+	LcdSetIcon(ICON_BAT_FRAME,TRUE);
+	LcdSetIcon(ICON_BAT_20,TRUE);
+	LcdSetIcon(ICON_BAT_40,TRUE);
+	LcdSetIcon(ICON_BAT_60,TRUE);
+	LcdSetIcon(ICON_BAT_80,TRUE);
+	LcdSetIcon(ICON_LINE,TRUE);
 	
 	switch(g_UiMenu.submenu)
 	{
 		case BAT_ITEM_SOC:
 			sprintf((char*)tempStr,"%d",(g_bq40z50_state.Relative_State_of_Charge[0] | g_bq40z50_state.Relative_State_of_Charge[1]<<8));
-			//LcdSetIcon(ICON_PRECENT,TRUE);
+			LcdSetIcon(ICON_PRECENT,TRUE);
 			break;
 		case BAT_ITEM_REMAIN_CAP:
 			#ifdef UI1K_V13_PROJECT
@@ -1052,9 +1052,9 @@ void MenuShowBattery(uint8_t submenu,uint8_t *tempStr)
 			#endif
 			
 			sprintf((char*)tempStr,"%d%d",temp/1000,(temp%1000)/100);
-			//LcdSetIcon(ICON_A,TRUE);
-			//LcdSetIcon(ICON_H,TRUE);
-			//LcdSetIcon(ICON_POINT,TRUE);
+			LcdSetIcon(ICON_A,TRUE);
+			LcdSetIcon(ICON_H,TRUE);
+			LcdSetIcon(ICON_POINT,TRUE);
 			break;
 		case BAT_ITEM_TEMP:
 			#ifdef UI1K_V13_PROJECT
@@ -1067,8 +1067,8 @@ void MenuShowBattery(uint8_t submenu,uint8_t *tempStr)
 			/*else
 				sprintf(tempStr,"%d%d",(temp-9)/10,(temp-9)%10);*/
 			
-			//LcdSetIcon(ICON_CELSIUS,TRUE);
-			////LcdSetIcon(ICON_POINT,TRUE);
+			LcdSetIcon(ICON_CELSIUS,TRUE);
+			//LcdSetIcon(ICON_POINT,TRUE);
 			break;
 		case BAT_ITEM_REMAIN_TIME:
 			temp=(g_bq40z50_state.Run_Time_To_Empty[0] | g_bq40z50_state.Run_Time_To_Empty[1]<< 8);
@@ -1077,13 +1077,13 @@ void MenuShowBattery(uint8_t submenu,uint8_t *tempStr)
 				memcpy(tempStr,"----",4);
 			else
 				sprintf((char*)tempStr,"%d",temp/*/6/10,(temp/6)%10*/);
-			//LcdSetIcon(ICON_H,TRUE);
-			////LcdSetIcon(ICON_POINT,TRUE);
+			LcdSetIcon(ICON_H,TRUE);
+			//LcdSetIcon(ICON_POINT,TRUE);
 			break;
 		case BAT_ITEM_VOLTAGE:
 			sprintf((char*)tempStr,"%d%d",volt/1000,(volt/100)%10);
-			//LcdSetIcon(ICON_V,TRUE);
-			//LcdSetIcon(ICON_POINT,TRUE);
+			LcdSetIcon(ICON_V,TRUE);
+			LcdSetIcon(ICON_POINT,TRUE);
 			break;
 		case BAT_ITEM_CURRENT:
 		 
@@ -1091,8 +1091,8 @@ void MenuShowBattery(uint8_t submenu,uint8_t *tempStr)
 				sprintf((char*)tempStr,"-%d%d",(current /1000),(current /100)%10);
 			else
 				sprintf((char*)tempStr,"%d%d",(current /1000),(current /100)%10);
-			//LcdSetIcon(ICON_A,TRUE);
-			//LcdSetIcon(ICON_POINT,TRUE);
+			LcdSetIcon(ICON_A,TRUE);
+			LcdSetIcon(ICON_POINT,TRUE);
 			break;
 		case BAT_ITEM_CYC_TIME:
 			sprintf((char*)tempStr,"%d",g_bq40z50_state.Cycle_Count[0] | g_bq40z50_state.Cycle_Count[1]<<8);
@@ -1129,8 +1129,8 @@ void MenuShowTime(uint8_t submenu,uint8_t *tempStr)
 	power = (uint16_t)(current * CURRENT_CAL * volt / 10000);
 	#endif
 	
-	//LcdSetIcon(ICON_CLOCK,TRUE);
-	//LcdSetIcon(ICON_LINE,TRUE);
+	LcdSetIcon(ICON_CLOCK,TRUE);
+	LcdSetIcon(ICON_LINE,TRUE);
 	
 	switch(g_UiMenu.submenu)
 	{
@@ -1141,8 +1141,8 @@ void MenuShowTime(uint8_t submenu,uint8_t *tempStr)
 				memcpy(tempStr,"----",4);
 			else
 				sprintf((char*)tempStr,"%d",/*(temp/6)/10,(temp/6)%10*/temp);
-			//LcdSetIcon(ICON_h,TRUE);
-			////LcdSetIcon(ICON_POINT,TRUE);
+			LcdSetIcon(ICON_h,TRUE);
+			//LcdSetIcon(ICON_POINT,TRUE);
 			break;
 		case TIME_ITEM_RECHRGE_EMPTY:
 			temp=(g_bq40z50_state.Run_Time_To_Empty[0] | g_bq40z50_state.Run_Time_To_Empty[1]<< 8);
@@ -1151,20 +1151,20 @@ void MenuShowTime(uint8_t submenu,uint8_t *tempStr)
 				memcpy(tempStr,"----",4);
 			else
 				sprintf((char*)tempStr,"%d",temp/*/6/10,(temp/6)%10*/);
-			//LcdSetIcon(ICON_H,TRUE);
-			////LcdSetIcon(ICON_POINT,TRUE);
+			LcdSetIcon(ICON_H,TRUE);
+			//LcdSetIcon(ICON_POINT,TRUE);
 			break;
 		case TIME_ITEM_RUN_TIME:
 
 			sprintf((char*)tempStr,"%d%d",(CoulomGetRuntime()/3600),(CoulomGetRuntime()*10/3600)%10);
-			////LcdSetIcon(ICON_h,TRUE);
-			//LcdSetIcon(ICON_H,TRUE);
 			//LcdSetIcon(ICON_h,TRUE);
-			//LcdSetIcon(ICON_POINT,TRUE);
+			LcdSetIcon(ICON_H,TRUE);
+			LcdSetIcon(ICON_h,TRUE);
+			LcdSetIcon(ICON_POINT,TRUE);
 			break;
 		case TIME_ITEM_TOTAL_RUN_TIME:
 			sprintf((char*)tempStr,"%d",(EEpGetAccuRuntime()+CoulomGetRuntime())/3600/24);
-//			//LcdSetIcon(ICON_d,TRUE);
+			LcdSetIcon(ICON_d,TRUE);
 			break;
 		case TIME_ITEM_ESC:
 			memcpy(tempStr,"ESC ",4);
@@ -1174,10 +1174,10 @@ void MenuShowTime(uint8_t submenu,uint8_t *tempStr)
 
 void MenuShowBle(uint8_t submenu,uint8_t *tempStr)
 {
-//	//LcdSetIcon(ICON_BLE,TRUE);
-//	//LcdSetIcon(ICON_WIFI,TRUE);
-//	//LcdSetIcon(ICON_LINE,TRUE);
-//	
+	LcdSetIcon(ICON_BLE,TRUE);
+	LcdSetIcon(ICON_WIFI,TRUE);
+	LcdSetIcon(ICON_LINE,TRUE);
+	
 	switch(submenu)
 	{
 		case BLE_ITEM_ON:
@@ -1195,9 +1195,9 @@ void MenuShowBle(uint8_t submenu,uint8_t *tempStr)
 
 void MenuShowPayg(uint8_t submenu,uint8_t *tempStr)
 {
-	//LcdSetIcon(ICON_LOCK,TRUE);
-	//LcdSetIcon(ICON_UNLOCK,TRUE);
-	//LcdSetIcon(ICON_LINE,TRUE);
+	LcdSetIcon(ICON_LOCK,TRUE);
+	LcdSetIcon(ICON_UNLOCK,TRUE);
+	LcdSetIcon(ICON_LINE,TRUE);
 	
 	switch(g_UiMenu.submenu)
 	{
@@ -1206,7 +1206,7 @@ void MenuShowPayg(uint8_t submenu,uint8_t *tempStr)
 				memcpy(tempStr,"free",4);
 			else	
 				sprintf((char*)tempStr,"%d",payg.remaing_days);
-			//LcdSetIcon(ICON_d,TRUE);
+			LcdSetIcon(ICON_d,TRUE);
 			break; 
 		/*case PAYG_ITEM_INPUT:
 			memcpy(tempStr,"in-p",4);
@@ -1227,34 +1227,34 @@ void MenuShowPayg(uint8_t submenu,uint8_t *tempStr)
 
 void MenuShowPower(uint8_t submenu,uint8_t *tempStr)
 {
-	//LcdSetIcon(ICON_POWER,TRUE);
-	//LcdSetIcon(ICON_LINE,TRUE);
+	LcdSetIcon(ICON_POWER,TRUE);
+	LcdSetIcon(ICON_LINE,TRUE);
 	
 	switch(g_UiMenu.submenu)
 	{
 		#ifdef ROLL_SWITCH
 		
 		case PWR_ITEM_AC:
-			//LcdSetIcon(ICON_POINT,TRUE);
-//			if(g_AcState)
-//				memcpy(tempStr,"ac i",4);
-//			else
-//				memcpy(tempStr,"ac o",4);
+			LcdSetIcon(ICON_POINT,TRUE);
+			if(g_AcState)
+				memcpy(tempStr,"ac i",4);
+			else
+				memcpy(tempStr,"ac o",4);
 			
 			break;
 		case PWR_ITEM_DC:
-			//LcdSetIcon(ICON_POINT,TRUE);
-//			if(g_DcState)
-//				memcpy(tempStr,"dc i",4);
-//			else
-//				memcpy(tempStr,"dc o",4);
+			LcdSetIcon(ICON_POINT,TRUE);
+			if(g_DcState)
+				memcpy(tempStr,"dc i",4);
+			else
+				memcpy(tempStr,"dc o",4);
 			break;	
 		case PWR_ITEM_USB:
-			//LcdSetIcon(ICON_POINT,TRUE);
-//			if(g_UsbState)
-//				memcpy(tempStr,"usbi",4);
-//			else
-//				memcpy(tempStr,"usbo",4);
+			LcdSetIcon(ICON_POINT,TRUE);
+			if(g_UsbState)
+				memcpy(tempStr,"usbi",4);
+			else
+				memcpy(tempStr,"usbo",4);
 			break;	
 		#else
 		case PWR_ITEM_ON:
@@ -1274,46 +1274,46 @@ void MenuShowPaygInput(uint8_t submenu,uint8_t *tempStr)
 {
 	uint8_t i,n,m=0;
 	
-//	//LcdSetIcon(ICON_LOCK,TRUE);
-//	//LcdSetIcon(ICON_UNLOCK,TRUE);
-//	//LcdSetIcon(ICON_LINE,TRUE);
+	LcdSetIcon(ICON_LOCK,TRUE);
+	LcdSetIcon(ICON_UNLOCK,TRUE);
+	LcdSetIcon(ICON_LINE,TRUE);
 
-//	if(g_PaygInput.len>=4)
-//		m=3;
-//	if(g_PaygInput.len>=7)
-//		m=6;
-//	if(g_PaygInput.len>=10)
-//		m=9;
-//	if(g_PaygInput.len>=13)
-//		m=12;
-//	if(g_PaygInput.len>=16)
-//		m=15;
-//	if(g_PaygInput.len>=19)
-//		m=18;
+	if(g_PaygInput.len>=4)
+		m=3;
+	if(g_PaygInput.len>=7)
+		m=6;
+	if(g_PaygInput.len>=10)
+		m=9;
+	if(g_PaygInput.len>=13)
+		m=12;
+	if(g_PaygInput.len>=16)
+		m=15;
+	if(g_PaygInput.len>=19)
+		m=18;
 
 
-//	n=g_PaygInput.len-m;
+	n=g_PaygInput.len-m;
 		
 	memcpy(tempStr,"----",4);
 
 	//if(g_PaygInput.len>=21)
-//	if(g_PaygInput.key[g_PaygInput.pos]==12)		
-//	{
-//		tempStr[3]='z';
-//		}
-//	 else if(g_PaygInput.key[g_PaygInput.pos]==10)	
-//		tempStr[3]='-';
-//	else if(g_PaygInput.key[g_PaygInput.pos]==11)	
-//		tempStr[3]='y';
-//	else
-//		tempStr[3]=g_PaygInput.key[g_PaygInput.pos]+'0';
-//		
-//		
-//	
-//	for(i=0;i<n;i++)
-//	{
-//		tempStr[i]=g_PaygInput.key[m+i]+'0';
-//		}
+	if(g_PaygInput.key[g_PaygInput.pos]==12)		
+	{
+		tempStr[3]='z';
+		}
+	 else if(g_PaygInput.key[g_PaygInput.pos]==10)	
+		tempStr[3]='-';
+	else if(g_PaygInput.key[g_PaygInput.pos]==11)	
+		tempStr[3]='y';
+	else
+		tempStr[3]=g_PaygInput.key[g_PaygInput.pos]+'0';
+		
+		
+	
+	for(i=0;i<n;i++)
+	{
+		tempStr[i]=g_PaygInput.key[m+i]+'0';
+		}
 }
 #endif
 #endif

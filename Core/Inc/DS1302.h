@@ -53,6 +53,7 @@ typedef struct _DS1302_TIME
   unsigned char month;
   unsigned char day;
   unsigned char week;
+  
   unsigned char hour;
   unsigned char minute;
   unsigned char second;

@@ -1,7 +1,7 @@
 #include"main.h"
 #include"string.h"
 
-
+#ifdef GPS_SUPPORT
  __IO double g_lon=0.0f,g_lat=0.0f;
  __IO uint16_t g_High=0;
 
@@ -22,7 +22,7 @@
 
 extern UART_HandleTypeDef huart4;
 extern uint8_t g_GattMem[MEM_GATT_SIZE];
-uint8_t g_UartGpsBuf[UART4_RX_BUF_SIZE];
+ __IO uint8_t g_UartGpsBuf[UART4_RX_BUF_SIZE];
 
 
 uint16_t  GetAsciiValueLen(uint8_t *str,uint8_t end_tag)
@@ -105,7 +105,7 @@ void GpsInit(void)
 	//Uart4Send(g_gpsRateCfg,strlen(g_gpsRateCfg));
 }
 
-#if 0
+
 RTC_TimeTypeDef g_gpstime;
 RTC_DateTypeDef g_gpssdate;
 
@@ -389,7 +389,7 @@ void GpsProc(void)
 			}
 		}
 }
-
-
 #endif
+
+
 

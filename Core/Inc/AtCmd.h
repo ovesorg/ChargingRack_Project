@@ -1,8 +1,12 @@
 #ifndef __ATCMD_H__
 #define __ATCMD_H__
 
-#define AT_RETRY_CNT  6
-#define GSM_BUFFER 1024
+#define AT_RETRY_CNT  20
+#define GSM_BUFFER 1500
+
+extern uint8_t ota_finsh ;
+extern uint16_t offcount ;
+extern uint8_t g_FtpAtAckState;
 
 enum
 {
@@ -19,8 +23,8 @@ typedef enum
 	AT_CMD_WKUP,	
 	AT_CMD_AT,
 	AT_CMD_ATE0,
-	AT_CMD_CIPCLOSE,
-	AT_CMD_CIPSHUT,
+//	AT_CMD_CIPCLOSE,
+//	AT_CMD_CIPSHUT,
 	AT_CMD_CPIN,
 	AT_CMD_CSQ,
 	AT_CMD_CREG,
@@ -67,11 +71,30 @@ typedef enum
 	AT_CMD_SIMSWITCH,
 	AT_CMD_DUALSIM,
 	AT_CMD_CICCID,
+	AT_CMD_CEMODE,
 	#endif
 	AT_CMD_MAX_COUNT
 
 }AT_CMD_DEF;
 
+
+typedef enum
+{
+	AT_CMD_NONE1,
+	AT_CMD_FTPSTART,
+	AT_CMD_FTPLOGIN,
+	AT_CMD_FTPFSLS,
+	AT_CMD_FTPGETFILE,
+	AT_CMD_FTPLOGOUT,
+	AT_CMD_FTPSTOP,
+	
+	AT_CMD_FTPFILEOPEN,
+	AT_CMD_FTPFILESLEEK,
+	AT_CMD_FTPFILEREAD,
+	AT_CMD_FTPFILECLOSE,
+	AT_CMD_FTPFILEDEL,
+	
+}AT_CMD_FTP;
 
 typedef struct
 {
@@ -126,7 +149,7 @@ void AtCmdCmgrSend(uint8_t * buffer);
 void AtCmdCmgsSend(uint8_t * buffer);
 void AtCmdCmgsSMSSend(uint8_t * buffer);
 void AtCmdCpmsAck(uint8_t * buffer);
-
+void AtCmdMerge_ftp(uint8_t cmd);
 uint8_t*AtStrStr(uint8_t *src,uint8_t *dst);
 
 void AtCmdApnParse(uint8_t*str,uint8_t*tag);
@@ -145,6 +168,10 @@ void AtSetTopicId(uint8_t * ext_topic);
 void AtSetSubscribeId(void);
 void AtCmdCipSendOk(uint8_t * buffer);
 void AtCmdRamlParse(uint8_t*buf,uint8_t gsm);
+void AtCmdProc_ftp(void);
+	
+uint8_t getlen_filels(void);
+void clear_filels(void);
 
 #ifdef MODULE_4G
 

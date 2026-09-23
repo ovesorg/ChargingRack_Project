@@ -8,6 +8,8 @@
 
 #ifdef P10KW_PROJECT
 #define JSON_LEN  1024*4
+#elif defined(CHARGE_STATION)
+#define JSON_LEN  1024*6
 #else
 #define JSON_LEN  1024*4
 #endif
@@ -17,7 +19,7 @@
 //#define MEM_SIZE(name) MEM_SIZE_##name
 
 
-
+//124
 #define MEM_SIZE_OPID    20
 #define MEM_SIZE_PPID    32
 #define MEM_SIZE_FLID    32
@@ -25,7 +27,7 @@
 #define MEM_SIZE_FRMV    15
 
 
-//CMD
+//CMD 154
 #define MEM_SIZE_PUBK    32
 #define MEM_SIZE_GSTW    2	
 #define MEM_SIZE_GCTW    2
@@ -33,7 +35,10 @@
 #define MEM_SIZE_SWCH    2
 #define MEM_SIZE_READ    32
 #define MEM_SIZE_RPTM    2
-#define MEM_SIZE_RAML    2
+#define MEM_SIZE_RAML    32
+#define MEM_SIZE_RTMD 16
+#define MEM_SIZE_TMZS 2
+#define MEM_SIZE_MXPS 2
 
 #define MEM_SIZE_HBFQ    2
 
@@ -67,7 +72,7 @@
 #define MEM_SIZE_STMM        2
 #define MEM_SIZE_STSS        2
 #endif
-//STS
+//STS 98
 #define MEM_SIZE_SSTC    2
 #define MEM_SIZE_CRTM    16
 #define MEM_SIZE_UDTM    16
@@ -108,16 +113,20 @@
 #define MEM_SIZE_CV06    2
 #define MEM_SIZE_CV07    2
 #elif defined(E_MOB48V_PROJECT)
-////DTA
+////DTA 94
 #define MEM_SIZE_BATP    2
 #define MEM_SIZE_INPP    2
 #define MEM_SIZE_OUTP    2
 #define MEM_SIZE_AENG    2
 #define MEM_SIZE_PCKV    4
+#ifdef GROWATT_BMS
 #define MEM_SIZE_PCKC    2
+#else
+#define MEM_SIZE_PCKC    2
+#endif
 #define MEM_SIZE_RSOC    2
 #define MEM_SIZE_RCAP    2
-#define MEM_SIZE_FCCP    4
+#define MEM_SIZE_FCCP    2
 #define MEM_SIZE_PCKT    2
 #ifdef BMS_SUPPWR_SUPPORT
 #define MEM_SIZE_ACYC    2
@@ -140,14 +149,17 @@
 #define MEM_SIZE_MTRD    2
 #define MEM_SIZE_TSPD    2
 #define MEM_SIZE_RVLT    2
+#ifdef GROWATT_BMS
 #define MEM_SIZE_RCUR    2
+#else
+#define MEM_SIZE_RCUR    2
+#endif
 #define MEM_SIZE_RMAX    2
 #define MEM_SIZE_CMXS    2
 #define MEM_SIZE_CMXC    2
-
-
+#define MEM_SIZE_TOMD 16
+#define MEM_SIZE_CUMD 16
 #endif
-
 
 //DIA
 #define MEM_SIZE_CV01    2
@@ -189,7 +201,23 @@
 #define MEM_SIZE_TEMP5    2
 #define MEM_SIZE_TEMP6    2
 #endif
+#elif defined(CHARGE_STATION)
+////DTA
+#define MEM_SIZE_RONU    4
+#define MEM_SIZE_INPC    2
+#define MEM_SIZE_INPV    2
+#define MEM_SIZE_CHPO    2
+#define MEM_SIZE_TDEC    4
+#define MEM_SIZE_MOEC    4
 
+//DIA
+#define MEM_SIZE_CNUM    32
+#define MEM_SIZE_BTID    2
+#define MEM_SIZE_CHST    2
+#define MEM_SIZE_RSOC    2
+#define MEM_SIZE_RECA    2
+#define MEM_SIZE_PCKV    2
+#define MEM_SIZE_PCKC    2
 
 #elif defined(P10KW_PROJECT)
 
@@ -311,8 +339,24 @@ enum
 	MEM_ADDR_READ=MEM_ADDR_SWCH+MEM_SIZE_SWCH,
 	MEM_ADDR_RPTM=MEM_ADDR_READ+MEM_SIZE_READ,
 	MEM_ADDR_RAML=MEM_ADDR_RPTM+MEM_SIZE_RPTM,
-	MEM_ADDR_HBFQ=MEM_ADDR_RAML+MEM_SIZE_RAML,
-	MEM_ADDR_ADDR=MEM_ADDR_HBFQ+MEM_SIZE_HBFQ , 
+#ifdef MILEAGE_RECORD_SUPPORT
+	MEM_ADDR_RTMD = MEM_ADDR_RAML + MEM_SIZE_RAML,
+	#ifdef TIME_ZONE_SET
+	MEM_ADDR_TMZS = MEM_ADDR_RTMD + MEM_SIZE_RTMD,
+	MEM_ADDR_MXPS = MEM_ADDR_TMZS + MEM_SIZE_TMZS,
+	MEM_ADDR_HBFQ = MEM_ADDR_MXPS + MEM_SIZE_MXPS,
+	#else
+	MEM_ADDR_HBFQ = MEM_ADDR_RTMD + MEM_SIZE_RTMD,
+	#endif
+#else
+	#ifdef TIME_ZONE_SET
+	MEM_ADDR_TMZS = MEM_ADDR_RAML + MEM_SIZE_RAML,
+	MEM_ADDR_MXPS = MEM_ADDR_TMZS + MEM_SIZE_TMZS,
+	MEM_ADDR_HBFQ = MEM_ADDR_MXPS + MEM_SIZE_MXPS,
+	#else
+	MEM_ADDR_HBFQ = MEM_ADDR_RAML + MEM_SIZE_RAML,
+	#endif
+#endif
 	#ifdef P10KW_PROJECT
 	MEM_ADDR_AOCT=MEM_ADDR_HBFQ  +MEM_SIZE_HBFQ   , 
 	MEM_ADDR_AOSS=MEM_ADDR_AOCT  +MEM_SIZE_AOCT   , 
@@ -347,7 +391,7 @@ enum
 	MEM_ADDR_SSTC=MEM_ADDR_STSS+MEM_SIZE_STSS,
 	#else
 	//STS
-	MEM_ADDR_SSTC=MEM_ADDR_ADDR+MEM_SIZE_HBFQ,
+	MEM_ADDR_SSTC=MEM_ADDR_HBFQ+MEM_SIZE_HBFQ,
 	#endif
 	MEM_ADDR_CRTM=MEM_ADDR_SSTC+MEM_SIZE_SSTC,
 	MEM_ADDR_UDTM=MEM_ADDR_CRTM+MEM_SIZE_CRTM,
@@ -417,6 +461,9 @@ enum
 	MEM_ADDR_PMCS=MEM_ADDR_PPST+MEM_SIZE_PPST,
 	MEM_ADDR_CMOS=MEM_ADDR_PMCS+MEM_SIZE_PMCS,
 	MEM_ADDR_DMOS=MEM_ADDR_CMOS+MEM_SIZE_CMOS,
+	#ifdef E_MOB48V_PROJECT_BAT
+	MEM_ADDR_CV01=MEM_ADDR_DMOS+MEM_SIZE_DMOS,
+	#else
 	MEM_ADDR_CTMP=MEM_ADDR_DMOS+MEM_SIZE_DMOS,
 	MEM_ADDR_MTPM=MEM_ADDR_CTMP+MEM_SIZE_CTMP,
 	MEM_ADDR_MTRD=MEM_ADDR_MTPM+MEM_SIZE_MTPM,
@@ -426,7 +473,14 @@ enum
 	MEM_ADDR_RMAX=MEM_ADDR_RCUR+MEM_SIZE_RCUR,
 	MEM_ADDR_CMXS=MEM_ADDR_RMAX+MEM_SIZE_RMAX,
 	MEM_ADDR_CMXC=MEM_ADDR_CMXS+MEM_SIZE_CMXS,
-	MEM_ADDR_CV01=MEM_ADDR_CMXC+MEM_SIZE_CMXC,
+	#ifdef MILEAGE_RECORD_SUPPORT
+	MEM_ADDR_TOMD = MEM_ADDR_CMXC + MEM_SIZE_CMXC, // ADD
+	MEM_ADDR_CUMD = MEM_ADDR_TOMD + MEM_SIZE_TOMD, // ADD
+	MEM_ADDR_CV01 = MEM_ADDR_CUMD + MEM_SIZE_CUMD, // ADD
+	#else
+	MEM_ADDR_CV01 = MEM_ADDR_CMXC + MEM_SIZE_CMXC, // ADD
+	#endif
+	#endif
 	#else
 	MEM_ADDR_CV01=MEM_ADDR_SSPE+MEM_SIZE_SSPE,
 	#endif
@@ -474,6 +528,25 @@ enum
 	#else
 	MEM_GATT_SIZE=MEM_ADDR_CV16+MEM_SIZE_CV16
 	#endif
+#elif defined(CHARGE_STATION)	
+	////DTA
+	MEM_ADDR_RONU=MEM_ADDR_OCST+MEM_SIZE_OCST,
+	MEM_ADDR_INPC=MEM_ADDR_RONU+MEM_SIZE_RONU,
+	MEM_ADDR_INPV=MEM_ADDR_INPC+MEM_SIZE_INPC,
+	MEM_ADDR_CHPO=MEM_ADDR_INPV+MEM_SIZE_INPV,
+	MEM_ADDR_TDEC=MEM_ADDR_CHPO+MEM_SIZE_CHPO,
+	MEM_ADDR_MOEC=MEM_ADDR_TDEC+MEM_SIZE_TDEC,
+	
+	//DIA
+
+	MEM_ADDR_CNUM=MEM_ADDR_MOEC+MEM_SIZE_MOEC,
+	MEM_ADDR_BTID=MEM_ADDR_CNUM+MEM_SIZE_CNUM,
+	MEM_ADDR_CHST=MEM_ADDR_BTID+MEM_SIZE_BTID,
+	MEM_ADDR_RSOC=MEM_ADDR_CHST+MEM_SIZE_CHST,
+	MEM_ADDR_RECA=MEM_ADDR_RSOC+MEM_SIZE_RSOC,
+	MEM_ADDR_PCKV=MEM_ADDR_RECA+MEM_SIZE_RECA,
+	MEM_ADDR_PCKC=MEM_ADDR_PCKV+MEM_SIZE_PCKV,
+	MEM_GATT_SIZE=MEM_ADDR_PCKC+MEM_SIZE_PCKC,
 #elif defined(P10KW_PROJECT)	
 	//DTA									 
 	 MEM_ADDR_BATP=MEM_ADDR_OCST +MEM_SIZE_OCST  ,	 
@@ -586,11 +659,9 @@ enum
 	TYPE_FLOAT,
 	TYPE_FLOAT_STR,
 	TYPE_UINT32,
-	TYPE_INT32
+	TYPE_INT32,
+	TYPE_SUB_STRS,
 };
-
-
-
 
 enum
 {
@@ -612,8 +683,14 @@ enum
 	CMD_READ,
 	CMD_RPTM,
 	CMD_RAML,
+	#ifdef MILEAGE_RECORD_SUPPORT
+	CMD_RTMD,
+	#endif
+	#ifdef TIME_ZONE_SET
+	CMD_TMZS,
+	CMD_MXPS,
+	#endif
 	CMD_HBFQ,
-	CMD_ADDR,
 	#ifdef P10KW_PROJECT
 	CMD_AOCT,
     CMD_AOSS,
@@ -720,6 +797,7 @@ enum
 	DTA_PMCS,
 	DTA_CMOS,
 	DTA_DMOS,
+	#ifndef E_MOB48V_PROJECT_BAT
 	DTA_CTMP,
 	DTA_MTPM,
 	DTA_MTRD,
@@ -729,6 +807,11 @@ enum
 	DTA_RMAX,
 	DTA_CMXS,
 	DTA_CMXC,
+	#ifdef MILEAGE_RECORD_SUPPORT
+	DTA_TOMD, // ï¿½ï¿½ï¿½ï¿½ï¿?
+	DTA_CUMD, // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿?
+	#endif
+	#endif
 	#endif
 	DTA_COUNT
 };
@@ -739,6 +822,7 @@ enum
 	DIA_CV02,
 	DIA_CV03,
 	DIA_CV04,
+	#ifndef E_MOB48V_PROJECT_CAMP
 	DIA_CV05,
 	DIA_CV06,
 	DIA_CV07,
@@ -772,6 +856,30 @@ enum
 	DIA_TEMP5,
 	DIA_TEMP6,
 	#endif
+	#endif
+	DIA_COUNT
+};
+#elif defined(CHARGE_STATION)
+enum
+{
+	DTA_RONU,
+	DTA_INPC,
+	DTA_INPV,
+	DTA_CHPO,
+	DTA_TDEC,
+	DTA_MOEC,
+	DTA_COUNT
+};
+
+enum
+{
+	DIA_CNUM,
+	DIA_BTID,
+	DIA_CHST,
+	DIA_RSOC,
+	DIA_RECA,
+	DIA_PCKV,
+	DIA_PCKC,
 	DIA_COUNT
 };
 
@@ -1071,10 +1179,9 @@ enum
 typedef struct GATT_PARA
 {
 	//att
-	uint32_t  fccp;//Accu_Cycles 
 	uint8_t opid[20];
 	uint8_t ppid[32];
-	uint8_t rev[15];
+	uint8_t rev[8];
 	
 	//sts
 	uint16_t rcrd;//Remaining_PAYG_Days
@@ -1087,9 +1194,9 @@ typedef struct GATT_PARA
 	uint16_t rsoc;//Relative_SOC 
 	uint16_t rcap;//Remaining_Capacity 
 	
-	uint16_t acyc;//Full_Charge_Capacity 
+	uint16_t fccp;//Full_Charge_Capacity 
 	uint16_t rdbk;//Run_Days_Backup 
-	
+	uint16_t acyc;//Accu_Cycles 
 	uint16_t reserved0;// 
 	
 	uint8_t pubk[32];//PAYG_Security_Hash_Top
@@ -1222,6 +1329,8 @@ uint8_t* GattDtTypeFieldJsonMerge(uint8_t dt_type,uint8_t meta);
 uint8_t* GattSingleFieldMerge(uint8_t *tag_str);
 uint8_t *GattGetJsonBuff(void);
 void GattSetUplinkData(uint8_t *buf);
+void GattSetCmdRamlUplinkData(uint8_t *buf);
+
 void GattGetOpid(uint8_t*opid);
 GATTPROP_Def *GattGetListInfor(uint8_t dt_list,uint8_t *count);
 uint8_t GattGetListProp(uint8_t dt_list,uint8_t id,uint8_t *prop);
@@ -1243,7 +1352,7 @@ void GattSetRelativeSOC(uint16_t soc);//Relative_SOC
 void GattSetRmCap(uint16_t cap);//Remaining_Capacity
 void GattSetFullChrgeCap(uint16_t cap);//Full_Charge_Capacity
 void GattSetRunDayBackup(uint16_t day);//Run_Days_Backup
-void GattSetAccuCyc(uint32_t cyc);//Accu_Cycles
+void GattSetAccuCyc(uint16_t cyc);//Accu_Cycles
 void GattSetHashTop(uint8_t*hash,uint8_t size);//PAYG_Security_Hash_Top
 void GattSetGprsSleepTime(uint16_t time);//GPRS Sleep Time Period
 void GattSetGprsConnectTime(uint16_t time);//GPRS Connection Time Period
@@ -1309,7 +1418,13 @@ uint8_t GattGetListMeta(uint8_t dt_list,uint8_t id,uint8_t *meta);
 void GattAbacSetReprotIndex(uint8_t index);
 uint8_t* GattAbacFieldMerge(void);
 #endif
+#ifdef CHARGE_STATION
+void GattDiaArrayFieldMerge(uint8_t * buf);
+void GattDtaArrayFieldMerge(uint8_t * buf);
+void GattSlotIndexSet(uint8_t index);
+void GattSlotBmsFieldMerge(void);
 
+#endif
 #endif
 
 

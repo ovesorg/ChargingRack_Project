@@ -5,6 +5,9 @@ uint8_t g_tokenState=TOKEN_OK;
 uint8_t g_KeyboardDetectLock=FALSE;
 uint8_t g_KeyboardDetectLockRst=FALSE;
 
+uint8_t g_TokenValidInput=FALSE;
+
+
 PAYG_TypeDef payg;
 __IO uint8_t g_PaygUpdate=0;
 uint8_t g_sysInit=TRUE;
@@ -57,11 +60,14 @@ void PaygOvesTask(void)
 			}
 		else 
 		{
+			if(payg.remaing_days!=0
+			  ||payg.days_has_been_runing != payg.recharge_days
+			  ||payg.day_cem != payg.days_has_been_runing)
+				EEpUpdateEnable();
 			payg.remaing_days = 0;
 			payg.days_has_been_runing = payg.recharge_days;
 			payg.day_cem = payg.days_has_been_runing;
 			//SaveFlash_Flag = 1;
-			EEpUpdateEnable();
 			}
 
 	}
@@ -343,22 +349,6 @@ temp2 /= 10;
   }
 */
 
-__IO uint8_t  g_DemoState=0;
-uint8_t GetDemoState(void)
-{
-	return g_DemoState;
-}
-
-void  DemoModeClose(void)
-{
-	 g_DemoState=FALSE;
-}
-
-void  DemoModeStart(void)
-{
-	 g_DemoState=TRUE;
-}
-
 uint8_t MiddleStr(uint8_t hexd)
 {
   uint8_t tmp=0;
@@ -500,8 +490,8 @@ void Hash_Opration(uint32_t *hastop)
     Hash_Hi.Hash_long=hastop[0];
 
     CampInttoStrs(Hash_Hi.Hash_long, Hashstr);
-
-    if(strlen(Hashstr) < 10)
+    while(strlen(Hashstr) < 10)
+    //if(strlen(Hashstr) < 10)
      	 CampInsert(Hashstr, "0", 0);
     CampInttoStrs(Hash_Lo.Hash_long, Hashstr + strlen(Hashstr));
   //  if(strlen(Hashstr) < 20)
@@ -543,7 +533,23 @@ void PaygInit(void)
 		    payg.day_cem = 0;//备份天数等于0;
 		    EEpUpdateEnable();
 	  }
+
+	  #ifdef HASH_RESET
+	  payg.free = NO;
+	  payg.lock = NO;
+	  payg.remaing_days = 0;
+	  payg.days_has_been_runing = 0;
+	  InitDs1302();//宸茶繍琛屽ぉ鏁版竻0
+	  payg.time_cnt = 0;
+	  payg.recharge_days = 0;
 	  
+	  Sys_Code = 0;//clean Err
+	  g_sysStateCode.error.rtc_error=0;
+	  
+	  payg.day_cem = 0;//杩愯澶╂暟澶囦唤娓呴浂
+
+	  EEpUpdateEnable();
+	  #endif
 
 	  PaygUpdateEnable();
 	  PaygProcess();
@@ -556,21 +562,21 @@ void PaygOvesInput(void)
   //密码已使用
   if((payg.hast_input[0] == payg.hast_otp[0])&&(payg.hast_input[1] == payg.hast_otp[1]))
   {
+	    LogPrintf("\r\n keyUesed********* \r\n "); 
 	    Printf_Usart_num(keyUesed, 7);
 	    g_tokenState=TOKEN_USEED;
+		g_TokenValidInput=TRUE;
 
 	     if(EEpGetDemoCnt()<3&&payg.remaing_days==0&&payg.free == NO)
 	     {	
 		     	TimerDemoSet();
 		     	DemoModeStart();
-			EEpSetDemoCnt(EEpGetDemoCnt()+1);	
+				EEpSetDemoCnt(EEpGetDemoCnt()+1);	
 	     	}
 	    else
 	    {   
 			g_sysStateCode.error.pswd_error=1;
 	    	}
-			
-				    LogPrintf("key user‐r\n");
   }
   else//新密码
   {
@@ -593,12 +599,12 @@ void PaygOvesInput(void)
 	
     if(Top_UpDays > 0)//充值密码正确
     {	
-    LogPrintf(" Top_UpDays :%d   day‐r\n",z);
+		LogPrintf("Top_UpDays  %ld\r\n ",Top_UpDays);  //LogPrintf("SupPwr:Protect cancel %d \r\n",g_SupPwrCharge_Counter);
+		
 		payg.hast_otp[0] = hast_top_tmp[0];
 		payg.hast_otp[1] = hast_top_tmp[1];
 		//SaveFlash_Flag = 1;//需要更新FLASH
 		EEpUpdateEnable();
-		clear_pag_watchwdg();
 
 		if(Top_UpDays >= 2192) 
 			Top_UpDays = 2192;
@@ -617,15 +623,15 @@ void PaygOvesInput(void)
 			payg.lock = NUL; //è¨?T?a3y
 
 			//sys.eeprom_update = YES; //EEpeom óD2?êyDèòa?üD?
-      		}
+      	 }
 		
      	      if(Top_UpDays == 2192)
-	      {
+			  {
 		        payg.free = NO;
 		        payg.lock = NO;
 		        payg.remaing_days = 0;
 		        payg.days_has_been_runing = 0;
-			InitDs1302();//已运行天数清0
+				InitDs1302();//已运行天数清0
 		        payg.time_cnt = 0;
 		        payg.recharge_days = 0;
 		        //        //CBI(sys.system_status_Code,E05);
@@ -637,16 +643,17 @@ void PaygOvesInput(void)
 		        g_sysStateCode.error.rtc_error=0;
 
 		        g_tokenState=TOKEN_OK;
+				g_TokenValidInput=TRUE;
 		        
 		        payg.day_cem = 0;//运行天数备份清零
-	      		}
+	      	   }
      	       else if(Top_UpDays == 1096)
-	       {
+			   {
 		        //初始化所有参数
 		        payg.time_cnt = 0;  //累计时间清0
 		        payg.recharge_days = 0; //天数0
 		        payg.days_has_been_runing = 0;
-			InitDs1302(); //已运行时间清0
+				InitDs1302(); //已运行时间清0
 		        payg.remaing_days = 1096; //剩余天数清0
 		        //payg.run_days_backup  //这个参数累计不清零
 		        payg.lock = NUL; //权限清楚
@@ -656,22 +663,31 @@ void PaygOvesInput(void)
 		         g_sysStateCode.error.rtc_error=0;
 
 		        g_tokenState=TOKEN_OK;
+				g_TokenValidInput=TRUE;
 		        
 		        payg.day_cem = 0;//运行天数备份清零
-	      		}
+	      	  }
       	      else if((Top_UpDays > 0) && (Top_UpDays < 1096))
-	      {
+			  {
 		        //如果之前已经停机欠费,将时间累计清0.防止快累计一天实际充值效果没有1天
-		        if(payg.remaing_days == 0)
+		        if(payg.remaing_days == 0||g_sysStateCode.error.rtc_error)
 		        {
-			          if(/*(Sys_Code != 0xE1) && (Sys_Code != 0xE3)*/  g_sysStateCode.error.rtc_error==FALSE)
+			         // if(/*(Sys_Code != 0xE1) && (Sys_Code != 0xE3)*/  g_sysStateCode.error.rtc_error==FALSE)
 			          {
-				          payg.time_cnt = 0;  //如果剩余天数0
+			          	  if(payg.remaing_days == 0)
+				              payg.time_cnt = 0;  //如果剩余天数0
+				          else 
+				          {
+				          	  Sys_Code = 0;//clean Err
+		        			  g_sysStateCode.error.rtc_error=0;
+				          	}
 				          InitDs1302();//如果欠费状态下充值  时钟清零？ 
 			          }
 		        }
 		        PaygOvesTask();
-			g_tokenState=TOKEN_OK;
+				g_tokenState=TOKEN_OK;
+				g_TokenValidInput=TRUE;
+			    EEpSetDemoCnt(0);
 		        payg.recharge_days += Top_UpDays; //增加充值天数
 		        payg.free = NO;
 			#ifdef   SHOW_TIME        
@@ -683,18 +699,17 @@ void PaygOvesInput(void)
 		        Printf_Usart1("\r\n");
 			#endif        
 	      }
-    	  Send_RechargeOK();
+      Send_RechargeOK();
 	  g_sysStateCode.error.pswd_error=0;	  
 	  g_sysStateCode.error.pwd_len_error=0;
       
     }
     else//充值密码错误
     {
-      Printf_Usart_num(errkey, 7);
-
-      g_tokenState=TOKEN_ERROR;	  
-      g_sysStateCode.error.pswd_error=1;
-	  
+		Printf_Usart_num(errkey, 7);
+		LogPrintf("\r\n errkey >>>>>>>>>>>\r\n ");
+		g_tokenState=TOKEN_ERROR;	  
+		g_sysStateCode.error.pswd_error=1;
     }
   }
 }
@@ -711,11 +726,12 @@ uint32_t  PaygGetPayState(void)
 	else
 		 return FALSE;
 }
+
 uint32_t  PaygGetPayRemainDays(void)
 {
-     
 	return payg.remaing_days;
 }
+
 uint32_t  PaygGetFreeState(void)
 {
 	if( YES == payg.free)
@@ -724,21 +740,26 @@ uint32_t  PaygGetFreeState(void)
 		 return FALSE;
 }
 
+
+
 void PaygProcess(void)
 {
 	uint8_t syserr=GetSysErrorCode();
 	uint8_t output_en=TRUE;
 
-	
+	#ifdef OPEN_PAYGO
+	OpenPaygoProcess();
+	#endif
 	if(g_PaygUpdate)
 	{
 		uint8_t temp[8];
 		//extern  char hashshow[32];	
 
 		g_PaygUpdate=FALSE;
-		
-		
+		//#ifdef OPEN_PAYGO
+
 		//ds1302_read_time (&Read_T);
+		//#endif
 
 		if(payg.free != YES)
 		{
@@ -746,25 +767,30 @@ void PaygProcess(void)
 			tian = GetDs1302Day();
 		}
 
-//	#ifdef   SHOW_TIME
-	//	Show_Time();
-//	#endif 
-	
+	#ifdef   SHOW_TIME
+		Show_Time();
+	#endif      
 		PaygOvesTask();
 	
-		#ifndef BMS_CAMP_SUPPORT
-		#if  defined( PUMP_PROJECT)||defined(UI1K_V2_PROJECT)||defined(UI1K_V13_PROJECT)||defined(E_MOB48V_PROJECT)||defined(P10KW_PROJECT)
- 
+		#ifdef BMS_CAMP_SUPPORT
+		GattSetData(LIST_CMD, CMD_NAPN, (uint8_t*)g_UserSet.NetInfor.apn);
+		GattSetData(LIST_ATT,ATT_FLID,g_UserSet.fleed);
+		GattSetSysStatusCode(0);	
+		GattSetHeartbeat(g_UserSet.heartbeat);
+		#else
+		#if  defined( PUMP_PROJECT)||defined(UI1K_V2_PROJECT)||defined(UI1K_V13_PROJECT)||defined(E_MOB48V_PROJECT)||defined(P10KW_PROJECT)||defined(CHARGE_STATION)
+
+		#ifndef BLE_MASTER_ENABLE
 		GattSetPpid(payg.payg_id,20);
 		GattSetOpid(payg.oem_id,20);
-	 
-		//g_GattMem[MEM_ADDR_ADDR] 
- //		GattSetData(LIST_CMD, CMD_ADDR,  (uint8_t*)g_UserSet.canid_cnt);
-//		GattSetData(LIST_CMD, CMD_NAPN, (uint8_t*)g_UserSet.NetInfor.apn);
+		GattSetData(LIST_ATT,ATT_FLID,g_UserSet.fleed);
+		#endif
+
+		GattSetData(LIST_CMD, CMD_NAPN, (uint8_t*)g_UserSet.NetInfor.apn);
 		
-		#if defined(UI1K_V13_PROJECT)||defined(E_MOB48V_PROJECT)||defined(P10KW_PROJECT)
+		#if defined(UI1K_V13_PROJECT)||defined(E_MOB48V_PROJECT)||defined(P10KW_PROJECT)||defined(CHARGE_STATION)
 		#ifndef BLE_MASTER_ENABLE
-		GattSetVersion(GATT_VERSON,9);
+		GattSetVersion(GATT_VERSON,5);
 		GattSetSysStatusCode(g_sysStateCode.statecode);
 		#endif
 		#else
@@ -775,7 +801,7 @@ void PaygProcess(void)
 		GattSetRmPayDays(payg.remaing_days);//Remaining_PAYG_Days
 		GattSetRunDays(payg.days_has_been_runing);//Days have been running
 		GattSetPaygDays(payg.recharge_days);//PAYG_Dayss
-		if(payg.remaing_days||payg.free == YES)
+		if(/*payg.remaing_days||*/payg.free == YES)
 			GattSetPaygState(1);//PAYG_State
 		else
 			GattSetPaygState(0);//PAYG_State
@@ -783,15 +809,12 @@ void PaygProcess(void)
 		//GattSetSolarGeneration( payg.hast_otp[1]);//Solar Generation
 		#endif
 
-		
-		//LogPrintf("-paygo %d %d- %d %d\r\n",payg.remaing_days , payg.days_has_been_runing,g_sysStateCode.statecode,payg.recharge_days);
-	
-//		GattSetHeartbeat(g_UserSet.heartbeat);
-//		GattSetReportMode(g_UserSet.reportt_auto?0:1);
+		GattSetHeartbeat(g_UserSet.heartbeat);
+		GattSetReportMode(g_UserSet.reportt_auto?0:1);
 
 		#ifndef BLE_MASTER_ENABLE
 
-		#if defined( PUMP_PROJECT)||defined(UI1K_V2_PROJECT)||defined(UI1K_V13_PROJECT)||defined(E_MOB48V_PROJECT)||defined(P10KW_PROJECT)
+		#if defined( PUMP_PROJECT)||defined(UI1K_V2_PROJECT)||defined(UI1K_V13_PROJECT)||defined(E_MOB48V_PROJECT)||defined(P10KW_PROJECT)||defined(CHARGE_STATION)
 		Hash_Opration(payg.hast_otp);
 		#else
 		temp[0]=payg.hast_otp[0];
@@ -807,6 +830,15 @@ void PaygProcess(void)
 		CampHashOpration(temp);
 		#endif
 		GattSetHashTop((uint8_t*)hashshow,29);
+
+		if(GetDemoState())
+		{	
+			if(GetTimerDemoEvent())
+			{	
+				DemoModeClose();
+				TimerEventClear(TIMER_DEMO);
+			}
+		}
 
 		if(payg.remaing_days>0||GetDemoState()||payg.free == YES)
 			GattSetOutputCtrlState(1);
@@ -867,7 +899,7 @@ void PaygProcess(void)
 		 	if(g_KeyboardDetectLock==FALSE&&g_keyboardPwrHoldTmrLock==FALSE)
 		 	{
 			 	TimerKbPwrHoldSet(5*1000);
-//			 	KeyboardUsbPwrSet(TRUE);
+			 	KeyboardUsbPwrSet(TRUE);
 				g_KeyboardDetectLock=TRUE;
 				g_KeyboardDetectLockRst=TRUE;
 
@@ -940,7 +972,40 @@ void PaygProcess(void)
 			debug_printf("payg","low battery ,usb keyboard off ,remain days=",payg.remaing_days);
 			}
 		}
-  
+        //--------debug--------
+	//HAL_GPIO_WritePin(OUT_PG2_GPIO_Port, OUT_PG2_Pin, GPIO_PIN_SET);  //12 v output点烟器
+	//HAL_GPIO_WritePin(OUT_KEY_GPIO_Port, OUT_KEY_Pin, GPIO_PIN_SET);  //usb pwr
+
+	/*if(GetUserAcState())
+		HAL_GPIO_WritePin(AC_INVERT_CTRL_GPIO_Port, AC_INVERT_CTRL_Pin, GPIO_PIN_SET);  //ac 220v off	
+	else
+		HAL_GPIO_WritePin(AC_INVERT_CTRL_GPIO_Port, AC_INVERT_CTRL_Pin, GPIO_PIN_RESET);	 //ac 220v on	*/
+        //----------------------
+  	//if(HAL_GPIO_ReadPin(AC_FAULT_GPIO_Port, AC_FAULT_Pin)==GPIO_PIN_SET&&g_AcState/**/)
+	{	
+		//HAL_GPIO_WritePin(AC_INVERT_CTRL_GPIO_Port, AC_INVERT_CTRL_Pin, GPIO_PIN_RESET);	 //ac 220v on	
+		//g_AcState=FALSE;
+  		}
+
+	/*if(HAL_GPIO_ReadPin(BAT_C_CHRG_IN_GPIO_Port, BAT_C_CHRG_IN_Pin)==GPIO_PIN_RESET)
+	{	
+		HAL_GPIO_WritePin(CHRG_CTRL_GPIO_Port, CHRG_CTRL_Pin, GPIO_PIN_RESET);
+  		}
+	else*/
+	{
+		//HAL_GPIO_WritePin(CHRG_CTRL_GPIO_Port, CHRG_CTRL_Pin, GPIO_PIN_SET);
+		}
+
+	if(HAL_GPIO_ReadPin(PV_ON_CHRGE_IN_GPIO_Port, PV_ON_CHRGE_IN_Pin)==GPIO_PIN_RESET
+		&&AdcPvChrgOverState()==FALSE
+		&&CoulomVoltOver()==FALSE)
+	{	
+		HAL_GPIO_WritePin(PV_CHRG_CTRL_GPIO_Port, PV_CHRG_CTRL_Pin, GPIO_PIN_SET);
+  		}
+	else
+	{
+		HAL_GPIO_WritePin(PV_CHRG_CTRL_GPIO_Port, PV_CHRG_CTRL_Pin, GPIO_PIN_RESET);
+		}
 	#endif
 	#endif
  

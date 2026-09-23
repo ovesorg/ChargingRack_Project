@@ -12,15 +12,19 @@ static uint32_t PageError = 0;
 USER_SET_TypeDef g_UserSet;
 static uint8_t g_eepupdate=0;
 
+#ifdef ABACUSLEDER_SUPPORT
 ABACUS_COUNTER_TypeDef  g_AbacusLeder[MAX_ABACUS_NUMBER];
-
+#endif
 	
 void EEpInit(void)
 {
 
 	memset((uint8_t*)&g_UserSet,0x00,sizeof(USER_SET_TypeDef));
 
+
+	//#ifndef GD32F10X_MD
 	EEpReadPage(0x0000,sizeof(USER_SET_TypeDef),(uint8_t*)&g_UserSet);
+	//#endif
 
 	if(g_UserSet.endmark!=0x01234567 )
 	{
@@ -29,59 +33,134 @@ void EEpInit(void)
 		else	
 			memset((uint8_t*)&g_UserSet.NetInfor,0x00,sizeof(USER_SET_TypeDef)-sizeof(PAYG_TypeDef));
 		
-			memset((uint8_t*)&g_UserSet.NetInfor,0x00,sizeof(NET_INFOR_TypeDef));
-			memset((uint8_t*)&g_UserSet.CampFreq,0x00,sizeof(CAMP_FREQ_TypeDef));
-			memset((uint8_t*)&g_UserSet.NetInforFactory,0x00,sizeof(NET_INFOR_TypeDef));
-		
-
-			//memcpy(g_UserSet.NetInfor.apn,Defualt_APN,strlen(Defualt_APN));
-			#ifdef E_SIM_SUPPORT
-			memcpy(g_UserSet.NetInfor.apn,"orange.m2m.spec",15);
-			#else
-			memcpy(g_UserSet.NetInfor.apn,"internet.gma.iot",16);
-			#endif
-			
-			
-			/*memcpy(g_UserSet.NetInfor.mqtt_broker,"mqtt-2.omnivoltaic.com",22);
-			memcpy(g_UserSet.NetInfor.mqtt_port,"1883",4);
-			
-			memcpy(g_UserSet.CampFreq.M_frequen,"180",3);
-			memcpy(g_UserSet.CampFreq.T_frequen,"5",1);*/
-			
-			//memset((uint8_t*)&g_UserSet.NetInforFactory,0x00,sizeof(NET_INFOR_TypeDef));
-
-			memcpy(g_UserSet.NetInfor.mqtt_broker,"mqtt-client1.omnivoltaic.com",28);
-			memcpy(g_UserSet.NetInfor.mqtt_port,"18884",5);
-			memcpy(g_UserSet.NetInfor.mqtt_usename,"Client1",7);
-			memcpy(g_UserSet.NetInfor.mqtt_password,"3QtpFnDS",8); 
-
-			memcpy(g_UserSet.NetInforFactory.mqtt_broker,"mqtt-factory.omnivoltaic.com",28);
-			memcpy(g_UserSet.NetInforFactory.mqtt_port,"18883",5);
-			memcpy(g_UserSet.NetInforFactory.mqtt_usename,"Admin",5);
-			memcpy(g_UserSet.NetInforFactory.mqtt_password,"7xzUV@MT",8);
-
-			g_UserSet.reportt_auto=TRUE;
-			g_UserSet.ble_state=5; 
-//			g_UserSet.sleeptime=5; 
-			g_UserSet.onlinetime=2; 
-			g_UserSet.heartbeat=1; 
-			g_UserSet.wakeup_cnt=0; 
-			g_UserSet.ramt=30; 
-			g_UserSet.raml_num=0; 
-			g_UserSet.canid_cnt =1; 
-			#ifdef ABACUSLEDER_SUPPORT
-			g_UserSet.abacus_num=0;
-			memset(g_UserSet.abacuslist,0x00,MAX_ABACUS_NUMBER*6);
-			#endif
-			g_UserSet.endmark=0x01234567;
-	 
-			EEpUpdateEnable();
-
-			//EEpWritePage(0x0000,sizeof(USER_SET_TypeDef),(uint8_t*)&g_UserSet);
-	}
-
+		memset((uint8_t*)&g_UserSet.NetInfor,0x00,sizeof(NET_INFOR_TypeDef));
+		memset((uint8_t*)&g_UserSet.CampFreq,0x00,sizeof(CAMP_FREQ_TypeDef));
+		memset((uint8_t*)&g_UserSet.NetInforFactory,0x00,sizeof(NET_INFOR_TypeDef));
 	
-		LogPrintf("-canid %d- %s\r\n", g_UserSet.canid_cnt,g_UserSet.Payg.payg_id);
+
+		//memcpy(g_UserSet.NetInfor.apn,Defualt_APN,strlen(Defualt_APN));
+		#ifdef E_SIM_SUPPORT
+		memcpy(g_UserSet.NetInfor.apn,"data.apn.name\0",14);
+		#else
+		memcpy(g_UserSet.NetInfor.apn,"internet.gma.iot",16);
+		#endif
+		
+		
+		/*memcpy(g_UserSet.NetInfor.mqtt_broker,"mqtt-2.omnivoltaic.com",22);
+		memcpy(g_UserSet.NetInfor.mqtt_port,"1883",4);
+		
+		memcpy(g_UserSet.CampFreq.M_frequen,"180",3);
+		memcpy(g_UserSet.CampFreq.T_frequen,"5",1);*/
+		
+		//memset((uint8_t*)&g_UserSet.NetInforFactory,0x00,sizeof(NET_INFOR_TypeDef));
+
+		/*memcpy(g_UserSet.NetInfor.mqtt_broker,"mqtt-client1.omnivoltaic.com",28);
+		memcpy(g_UserSet.NetInfor.mqtt_port,"18884",5);
+ 		memcpy(g_UserSet.NetInfor.mqtt_usename,"Client1",7);
+		memcpy(g_UserSet.NetInfor.mqtt_password,"3QtpFnDS",8); */
+		#ifdef E_MOB48V_PROJECT_BAT
+		memcpy(g_UserSet.NetInfor.mqtt_broker,"mqtt.omnivoltaic.com",20);
+		memcpy(g_UserSet.NetInfor.mqtt_port,"1883\0",5);
+		memcpy(g_UserSet.NetInfor.mqtt_usename,"client2",7);
+		memcpy(g_UserSet.NetInfor.mqtt_password,"!mqTTc2.2024#",13);
+
+		memcpy(g_UserSet.NetInforFactory.mqtt_broker,"mqtt.omnivoltaic.com",20);
+		memcpy(g_UserSet.NetInforFactory.mqtt_port,"1883\0",5);
+		memcpy(g_UserSet.NetInforFactory.mqtt_usename,"Admin",5);
+		memcpy(g_UserSet.NetInforFactory.mqtt_password,"7xzUV@MT",8);
+		#else
+		memcpy(g_UserSet.NetInfor.mqtt_broker,"mqtt.omnivoltaic.com",20);
+		memcpy(g_UserSet.NetInfor.mqtt_port,"1883\0",5);
+		memcpy(g_UserSet.NetInfor.mqtt_usename,"client1",7);
+		memcpy(g_UserSet.NetInfor.mqtt_password,"!mqTTc1.2024#",13);
+
+		memcpy(g_UserSet.NetInforFactory.mqtt_broker,"mqtt.omnivoltaic.com",20);
+		memcpy(g_UserSet.NetInforFactory.mqtt_port,"1883\0",5);
+		memcpy(g_UserSet.NetInforFactory.mqtt_usename,"Admin",5);
+		memcpy(g_UserSet.NetInforFactory.mqtt_password,"7xzUV@MT",8);
+		#endif
+
+
+
+		g_UserSet.reportt_auto=TRUE;
+		#ifdef E_MOB48V_PROJECT_BAT
+		g_UserSet.ble_state=5; 
+		g_UserSet.sleeptime=60; 
+		g_UserSet.onlinetime=5; 
+		g_UserSet.heartbeat=1; 
+		g_UserSet.wakeup_cnt=0; 
+		g_UserSet.ramt=30; 
+		g_UserSet.raml_num=0; 
+		#else
+		g_UserSet.ble_state=5; 
+		g_UserSet.sleeptime=60; 
+		g_UserSet.onlinetime=5; 
+		g_UserSet.heartbeat=1; 
+		g_UserSet.wakeup_cnt=0; 
+		g_UserSet.ramt=30; 
+		g_UserSet.raml_num=0; 
+		#endif
+
+		#ifdef OPEN_PAYGO
+		//LoadActivationVariables();
+		g_UserSet.PAYGEnabled=1;
+		g_UserSet.TokenCount=1;
+		#endif
+
+		#ifdef ABACUSLEDER_SUPPORT
+		g_UserSet.abacus_num=0;
+		memset(g_UserSet.abacuslist,0x00,MAX_ABACUS_NUMBER*6);
+		#endif
+		g_UserSet.endmark=0x01234567;
+
+		EEpUpdateEnable();
+
+		//EEpWritePage(0x0000,sizeof(USER_SET_TypeDef),(uint8_t*)&g_UserSet);
+		}
+
+		#ifdef OPEN_PAYGO
+		LoadActivationVariables();
+		#endif
+
+		#ifdef TEST_SERVER
+		memset((uint8_t*)&g_UserSet.NetInfor,0x00,sizeof(NET_INFOR_TypeDef));
+		//memset((uint8_t*)&g_UserSet.CampFreq,0x00,sizeof(CAMP_FREQ_TypeDef));
+		memset((uint8_t*)&g_UserSet.NetInforFactory,0x00,sizeof(NET_INFOR_TypeDef));
+
+		/*memcpy(g_UserSet.NetInfor.mqtt_broker,"mqtt-client1.omnivoltaic.com",28);
+		memcpy(g_UserSet.NetInfor.mqtt_port,"18884",5);
+ 		memcpy(g_UserSet.NetInfor.mqtt_usename,"Client1",7);
+		memcpy(g_UserSet.NetInfor.mqtt_password,"3QtpFnDS",8); */
+
+        memcpy(g_UserSet.NetInfor.mqtt_broker,"mqtt.omnivoltaic.com",20);
+		memcpy(g_UserSet.NetInfor.mqtt_port,"1883\0",5);
+		memcpy(g_UserSet.NetInfor.mqtt_usename,"Admin",5);
+		memcpy(g_UserSet.NetInfor.mqtt_password,"7xzUV@MT",8);
+		/*memcpy(g_UserSet.NetInfor.mqtt_broker,"mqtt-client1.omnivoltaic.com",28);
+		memcpy(g_UserSet.NetInfor.mqtt_port,"18884",5);
+ 		memcpy(g_UserSet.NetInfor.mqtt_usename,"Client1",7);
+		memcpy(g_UserSet.NetInfor.mqtt_password,"3QtpFnDS",8);*/
+		
+		
+	/*	memcpy(g_UserSet.NetInfor.mqtt_broker,"mqtt.omnivoltaic.com",20);
+		memcpy(g_UserSet.NetInfor.mqtt_port,"1883\0",5); */
+		
+		memcpy(g_UserSet.NetInforFactory.mqtt_broker,"mqtt.omnivoltaic.com",20);
+		memcpy(g_UserSet.NetInforFactory.mqtt_port,"1883\0",5);
+		memcpy(g_UserSet.NetInforFactory.mqtt_usename,"Admin",5);
+		memcpy(g_UserSet.NetInforFactory.mqtt_password,"7xzUV@MT",8);
+		//memcpy(g_UserSet.NetInfor.mqtt_usename,"Admin",5);
+		//memcpy(g_UserSet.NetInfor.mqtt_password,"7xzUV@MT",8);
+
+		g_UserSet.sleeptime=30; 
+		g_UserSet.onlinetime=29;
+
+		#endif
+
+		//g_UserSet.sleeptime=60; 
+		//g_UserSet.onlinetime=5;
+		//EEpUpdateEnable();
+
 
 		#ifdef PUMP_TEST
 		memcpy(g_UserSet.Payg.oem_id,"40AH2022136000\0",15);
@@ -93,8 +172,10 @@ void EEpInit(void)
 		#if defined(CAMP_PROJECT )||defined(PUMP_PROJECT)	
 		 EEpSetWakeupCnt(EEpGetWakeupCnt()+1);
 		#endif
-		//memset(g_UserSet.Payg.oem_id,0x00,20);
-		//memcpy(g_UserSet.Payg.oem_id,"00AH210300000311",15);
+		/*memset(g_UserSet.Payg.oem_id,0x00,20);
+		memcpy(g_UserSet.Payg.oem_id,"B2481H24060001\0",15);
+		memset(g_UserSet.Payg.payg_id,0x00,20);
+		memcpy(g_UserSet.Payg.payg_id,"B2481H24060001\0",15);*/
 		
 		//memcpy(g_UserSet.Payg.oem_id,"07AH2112028888\0",15);
 		//memcpy(g_UserSet.Payg.payg_id,"20210712\0",9);
@@ -102,11 +183,27 @@ void EEpInit(void)
 		//g_UserSet.reportt_auto=1;
 
 		//memcpy(g_UserSet.NetInfor.apn,"internet.gma.iot",16);
-		//g_UserSet.log=1;
+		
+
+		g_UserSet.log=1;
+
+		
+		//memcpy(g_UserSet.NetInfor.apn,"data.apn.name\0",14);
+		
 		//memset(g_UserSet.NetInfor.mqtt_usename,0x00,MQTT_USENAME_LEN);
 		//memset(g_UserSet.NetInfor.mqtt_password,0x00,MQTT_PASSWORD_LEN);
 }
 
+double EEpGetTomd(void)
+{
+	return (g_UserSet.tomd);
+}
+
+void EEpSetTomd(double tomd)
+{
+	g_UserSet.tomd = tomd;
+	EEpUpdateEnable();
+}
 
 uint32_t EEpGetAccuCap(void)
 {
@@ -129,7 +226,8 @@ uint32_t EEpGetAccuRuntime(void)
 }
 
 void EEpSetAccuCap(uint32_t cap)
-{	g_UserSet.accuCap=cap;
+{
+	g_UserSet.accuCap = cap;
 	EEpUpdateEnable();
 }
 
@@ -175,11 +273,11 @@ uint32_t EEpGetTransFreq(void)
 
 uint32_t EEpGetSleepTime(void)
 {
-	#if defined(UI1K_V13_PROJECT)||defined(E_MOB48V_PROJECT)||defined(P10KW_PROJECT)
-//	if(g_UserSet.sleeptime)
-//		return g_UserSet.sleeptime*60*1000;
-//	else
-//		return ( 5*60*1000);
+	#if defined(UI1K_V13_PROJECT)||defined(E_MOB48V_PROJECT)||defined(P10KW_PROJECT)||defined(CHARGE_STATION)
+	if(g_UserSet.sleeptime)
+		return g_UserSet.sleeptime*60*1000;
+	else
+		return ( 5*60*1000);
 	#else
 	if(g_UserSet.sleeptime>g_UserSet.onlinetime)
 		return ( (g_UserSet.sleeptime-g_UserSet.onlinetime)*60);
@@ -265,6 +363,12 @@ void EEpWritePage(uint32_t PageAddress,uint32_t size,uint8_t* buffer)
 	uint32_t i=0;
 	uint32_t page=size/EEP_PAGE_SIZE;
 
+	#ifdef GD32F10X_MD
+
+	FlashPageErase(FLASH_START_ADDR+EEP_START_ADDR);
+
+	FlashPageProgram(FLASH_START_ADDR+EEP_START_ADDR,size/4,(uint32_t*)buffer);
+
 	
 	/*HAL_FLASH_Unlock();
 
@@ -283,7 +387,7 @@ void EEpWritePage(uint32_t PageAddress,uint32_t size,uint8_t* buffer)
 
 
 	HAL_FLASH_Lock();*/
-	//EEpWrite(PageAddress,size,buffer);
+	#else
 	for(i=0;i<page;i++)
 	{	
 		I2c_PageWrite(I2CX_SLAVE_ADDRESS7,PageAddress+i*EEP_PAGE_SIZE,EEP_PAGE_SIZE,&buffer[i*EEP_PAGE_SIZE]);
@@ -293,16 +397,20 @@ void EEpWritePage(uint32_t PageAddress,uint32_t size,uint8_t* buffer)
 
 	if(size%EEP_PAGE_SIZE)
 		I2c_PageWrite(I2CX_SLAVE_ADDRESS7,PageAddress+i*EEP_PAGE_SIZE,(size%EEP_PAGE_SIZE),&buffer[i*EEP_PAGE_SIZE]);
-
+	#endif	
 	
 }
 	
 
 void EEpReadPage(uint32_t PageAddress,uint32_t size,uint8_t* buffer)
 {
+	#ifdef GD32F10X_MD
+	FlashRead(FLASH_START_ADDR+EEP_START_ADDR+PageAddress,size/4,(uint32_t*)buffer);
+	#else
 	//FlashRead(FLASH_START_ADDR+EEP_START_ADDR+PageAddress,size/4,(uint32_t*)buffer);
 	//EEpRead(PageAddress,size,buffer);
 	I2c_PageRead(I2CX_SLAVE_ADDRESS7,PageAddress,size,buffer);
+	#endif
 }
 
 
@@ -417,12 +525,15 @@ void EEpUpdateEnable(void)
 }
 void EEpProcess(void)
 {
+
 	if(g_eepupdate)
 	{
 		g_eepupdate=FALSE;
 		memcpy((uint8_t*)&g_UserSet.Payg,(uint8_t*)PaygGetPaygBuf(),sizeof(PAYG_TypeDef));
 		EEpWritePage(0x0000,sizeof(USER_SET_TypeDef),(uint8_t*)&g_UserSet);
-	}
+
+		//LogPrintf("---Eeprom update---\r\m");
+		}
 }
 
 
@@ -534,10 +645,12 @@ void AbacusLederProc(void)
 							{
 								value32=0;
 								value16=0;
+								#ifndef CHARGE_STATION
 								if(list==LIST_DTA&&id==DTA_PCKV)
 								{	GattGetData(list,id,(uint8_t*)&value32);
 									}
 								else
+								#endif	
 								{	GattGetData(list,id,(uint8_t*)&value16);
 									value32=value16;
 									}

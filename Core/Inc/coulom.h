@@ -70,7 +70,7 @@ typedef union
 
 
 void SysPowerOff(void);
-
+uint16_t CRC16_rs485(uint8_t* pData, uint16_t len);
 uint16_t CRC16(uint8_t* pData, uint16_t len);
 uint8_t CrcCheck(uint8_t *pSrc, uint16_t size);
 uint16_t CoulomGetRtPower(void);

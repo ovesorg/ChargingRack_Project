@@ -44,7 +44,7 @@ OF SUCH DAMAGE.
 
 
 #ifdef IAP_SUPPORT
-#define VECT_TAB_OFFSET  (uint32_t)0x0000            /* vector table base offset */
+#define VECT_TAB_OFFSET  (uint32_t)0x2000            /* vector table base offset */
 #else
 #define VECT_TAB_OFFSET  (uint32_t)0x00            /* vector table base offset */
 #endif
@@ -52,7 +52,11 @@ OF SUCH DAMAGE.
 /* use IRC8M */
 //#define __SYSTEM_CLOCK_48M_PLL_IRC8M            (uint32_t)(48000000)
 //#define __SYSTEM_CLOCK_72M_PLL_IRC8M            (uint32_t)(72000000)
+#ifdef IRC_PLL
 #define __SYSTEM_CLOCK_108M_PLL_IRC8M           (uint32_t)(108000000)
+#else
+#define __SYSTEM_CLOCK_108M_PLL_HXTAL           (uint32_t)(108000000)
+#endif
 
 /* use HXTAL (XD series CK_HXTAL = 8M, CL series CK_HXTAL = 25M) */
 //#define __SYSTEM_CLOCK_HXTAL                    (uint32_t)(__HXTAL)

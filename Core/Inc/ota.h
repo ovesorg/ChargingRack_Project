@@ -3,9 +3,19 @@
 
 #define __OTA_H__
 
-#define OTA_START_ADDR 0x8000000+1024*148
-#define OTA_PAGE_NUM  100
 
+#define  OtaPrintf(...)  printf(__VA_ARGS__)
+
+
+#define OTA_START_ADDR 0x8000000+1024*128
+#define OTA_PAGE_NUM  110
+
+enum
+{
+	OTA_STATE_IDLE,
+	OTA_STATE_UPGRADE,
+	OTA_STATE_RESET
+};
 
 typedef struct
 {
@@ -26,6 +36,14 @@ typedef struct
 	uint32_t addr;
 	uint32_t crc32;
 	uint32_t time;
+	uint8_t breakcontinue;
+	uint8_t state;
+	uint8_t reserved;
+	uint8_t succ;
+	uint32_t rebootTimer;
+
+	uint32_t sleep;
+	uint32_t online;
 }OTA_COM_TypeDef;
 
 
@@ -35,6 +53,8 @@ typedef struct
 void OtaInit(void);
 void OtaProc(void);
 void OtaAckPublishPayload(uint8_t *buf);
+uint32_t CRC32(uint8_t *pData,uint32_t Length);
+void OtaParse(uint8_t * buf);
 
 #endif
 

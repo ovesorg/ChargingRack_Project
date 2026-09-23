@@ -16,7 +16,11 @@
 # Build output directories
 Template/Keil5_project/output/
 Template/Keil5_project/output_Iap/
+Template/Keil5_project/output_Iap_openpaygo/
 Template/Keil5_project/list/
+
+# Standalone build artifacts (firmware images, not source)
+Template/Keil5_project/BridgewareV2_bootloader.hex
 
 # ==========================================
 # Keil Project User-Specific Files

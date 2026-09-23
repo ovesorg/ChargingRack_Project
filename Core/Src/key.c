@@ -244,8 +244,6 @@ void KeyScan(void)
     uint8_t keyBtn=KEY_NONE;
 
 	
-
-
 	
 	#ifdef UI1K_V13_PROJECT
 	if(AdcGetBatVolt()<=1000U)

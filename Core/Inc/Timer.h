@@ -5,10 +5,10 @@
 
 #define GPRS_UPLOAD_PRIOD   (EEpGetTransFreq())// (uint32_t)(3u*60000u)
 
-#define SLEEP_PRIOD  (uint32_t)(1*60000u)
+#define SLEEP_PRIOD  (uint32_t)(2*60000u)
 
 
-#define DEMO_PRIOD  (uint32_t)(15*60000u)
+#define DEMO_PRIOD  (uint32_t)(15u*60000u)
 
 
 #define GPS_SAMPLE_TIME 15000u
@@ -44,6 +44,10 @@ enum
 	TIMER_GPS_SAMPLE,
 	TIMER_RAML_REPROT,
 	TIMER_ABAC_SAMPLE,
+	TIMER_OTA_EXIT,
+	#ifdef MILEAGE_RECORD_SUPPORT
+	TIMER_MILEAGE,
+	#endif
 	TIMER_COUNT
 };
 
@@ -118,6 +122,6 @@ void HAL_Delay(uint32_t Delay);
 void HAL_SYSTICK_Callback(void);
 void TimeAbacSampleCallback(TIMER_TypeDef *p);
 
-
+void TimeWriteMileageCallback(TIMER_TypeDef *p);
 #endif
 

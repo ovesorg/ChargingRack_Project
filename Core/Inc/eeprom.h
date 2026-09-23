@@ -4,6 +4,7 @@
 
 #define RAML_SIZE   20
 
+
 #ifdef ABACUSLEDER_SUPPORT
 #define MAX_ABACUS_NUMBER  8
 
@@ -21,17 +22,17 @@ typedef struct
 	NET_INFOR_TypeDef NetInforFactory;
 	uint8_t reportt_auto;// 0,manu,1 auto
 	uint8_t ble_state;
-	uint16_t lowbat;
+	uint8_t lowbat;
 	uint8_t demo_Cnt;
+
 	double tomd; 
-	uint32_t lowbat_bak;   //min
+
+	uint32_t sleeptime;   //min
 	uint32_t onlinetime;   //min
-	uint16_t canid_cnt;
-	uint16_t time;
-	uint16_t time_blk;
+	uint32_t report_fail_cnt;
 	uint32_t heartbeat;
 	uint32_t wakeup_cnt;
- 
+	
 	uint32_t accuCap;
 	uint32_t accuPower;
 	uint32_t accuSolarGen;
@@ -40,6 +41,8 @@ typedef struct
 	uint32_t ramt;
 	uint32_t raml_num;
 	uint8_t raml[RAML_SIZE][6];
+
+	
 
 	
 #ifdef ABACUSLEDER_SUPPORT
@@ -55,8 +58,20 @@ typedef struct
 	uint8_t max_speed_limit;
 
 	uint8_t fleed[MEM_SIZE_FLID];
+
+	#ifdef OPEN_PAYGO
+	uint16_t UsedTokens;
+	uint16_t TokenCount ;//(& UsedTokens if needed)
+	
+    uint8_t PAYGEnabled;
+	uint8_t reserved1[3];
+	
+    uint32_t ActiveUntil;
+    uint32_t TokenEntryLockedUntil;
+	#endif
 	
 	uint32_t endmark;  // 4
+	
 }USER_SET_TypeDef;
 
 typedef struct
@@ -88,13 +103,33 @@ typedef struct
 
 #define EEP_PAGE_SIZE 32u
 
-//#define ApplicationAddress    (uint32_t)0x8002000
-//#define UpgradeflagAddress FLASH_START_ADDR+0xfcc0+3*64*1024
-//#define BootModeflag           0x1a1a1a1a
+#define ApplicationAddress    (uint32_t)0x8002000
+#define UpgradeflagAddress FLASH_START_ADDR+0xfcc0+3*64*1024
+#define BootModeflag           0x1a1a1a1a
 
-extern USER_SET_TypeDef g_UserSet;
+#define UpgradeOtaflagAddress FLASH_START_ADDR+0xfcc0+3*64*1024+4
+#define BootOtaModeflag           0x012345
+
+#ifdef GD32F10X_MD
+#define ApplicationAddress    (uint32_t)0x8002000
+#define UpgradeflagAddress FLASH_START_ADDR+0xfcc0
+#define BootModeflag           0x1a1a1a1a
+
+#define UpgradeOtaflagAddress FLASH_START_ADDR+0xfcc0  //not use
+#define BootOtaModeflag           0x012345
+
+#define EEP_START_ADDR  (uint32_t)1024* (uint32_t)(61)
+#else
+#define ApplicationAddress    (uint32_t)0x8002000
+#define UpgradeflagAddress FLASH_START_ADDR+0xfcc0+3*64*1024
+#define BootModeflag           0x1a1a1a1a
+
+#define UpgradeOtaflagAddress FLASH_START_ADDR+0xfcc0+3*64*1024+4
+#define BootOtaModeflag           0x012345
+
 
 #define EEP_START_ADDR  (uint32_t)1024* (uint32_t)(63)
+#endif
 void EEpInit(void);
 void EEpWritePage(uint32_t PageAddress,uint32_t size,uint8_t* buffer);
 void EEpReadPage(uint32_t PageAddress,uint32_t size,uint8_t* buffer);
@@ -138,6 +173,8 @@ uint32_t EEpGetRamLRptTime(void);
 uint32_t EEpGetRamLRptNum(void);
 uint8_t EEpGetJtagState(void);
 void EEpSetJtag(uint8_t jtag);
+void EEpSetTomd(double tomd);
+double EEpGetTomd(void);
 #ifdef ABACUSLEDER_SUPPORT
 void RamShift(uint32_t *buf,uint16_t size);
 void AbacusLederInit(void);
